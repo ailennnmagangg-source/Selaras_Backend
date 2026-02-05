@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/edit_alat_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/tambah_alat_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/tambah_kategori_screen.dart';
 import 'package:selaras_backend/features/admin/management_alat/logic/alat_controller.dart';
 import 'package:selaras_backend/features/shared/models/alat_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class AdminAlatScreen extends StatefulWidget {
@@ -14,6 +16,9 @@ class AdminAlatScreen extends StatefulWidget {
 
 class _AdminAlatScreenState extends State<AdminAlatScreen> {
   final AlatController _controller = AlatController();
+  // Tambahkan baris ini agar variabel 'supabase' dikenali
+  final supabase = Supabase.instance.client;
+  
   String selectedKategori = "Semua";
   String searchQuery = "";
 
@@ -57,7 +62,8 @@ class _AdminAlatScreenState extends State<AdminAlatScreen> {
             // 3. Grid Alat (Data Asli)
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>( // Ubah jadi Map
-                future: _controller.fetchAlat(query: searchQuery),
+                future: _controller.fetchAlat(
+                  query: searchQuery),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -107,47 +113,73 @@ class _AdminAlatScreenState extends State<AdminAlatScreen> {
   }
 
   Widget _buildCategorySection() {
-    final listKategori = ["Semua", "Alat Potong", "Alat Tukar", "Elektronik"];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 20),
-          child: Text("Kategori", style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-        ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () {}, // Tambah Kategori Baru
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: AppColors.primaryBlue, shape: BoxShape.circle),
-                  child: const Icon(Icons.add, color: Colors.white, size: 18),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Padding(
+        padding: EdgeInsets.only(left: 20),
+        child: Text("Kategori", style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+      ),
+      StreamBuilder<List<Map<String, dynamic>>>(
+        stream: supabase.from('kategori').stream(primaryKey: ['id_kategori']).order('nama_kategori'),
+        builder: (context, snapshot) {
+          // Data kategori dari Supabase
+          final categoriesFromDb = snapshot.data ?? [];
+          
+          // Gabungkan dengan pilihan "Semua" secara manual di awal list
+          List<String> displayCategories = ["Semua"];
+          displayCategories.addAll(categoriesFromDb.map((e) => e['nama_kategori'].toString()));
+
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Row(
+              children: [
+                // Tombol Tambah Kategori
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TambahKategoriPage()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(color: AppColors.primaryBlue, shape: BoxShape.circle),
+                    child: const Icon(Icons.add, color: Colors.white, size: 18),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              ...listKategori.map((kat) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(kat),
-                  selected: selectedKategori == kat,
-                  onSelected: (s) => setState(() => selectedKategori = kat),
-                  selectedColor: AppColors.primaryBlue,
-                  labelStyle: TextStyle(color: selectedKategori == kat ? Colors.white : AppColors.textSecondary, fontSize: 12),
-                  backgroundColor: Colors.grey[100],
-                  side: BorderSide.none,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-              )).toList(),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+                const SizedBox(width: 10),
+                
+                // Chip Kategori Dinamis
+                ...displayCategories.map((kat) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(kat),
+                    selected: selectedKategori == kat,
+                    onSelected: (selected) {
+                      setState(() {
+                        selectedKategori = kat;
+                      });
+                    },
+                    selectedColor: AppColors.primaryBlue,
+                    labelStyle: TextStyle(
+                      color: selectedKategori == kat ? Colors.white : AppColors.textSecondary, 
+                      fontSize: 12,
+                    ),
+                    backgroundColor: Colors.grey[100],
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                )).toList(),
+              ],
+            ),
+          );
+        }
+      ),
+    ],
+  );
+}
 
   Widget _buildAlatCard(Map<String, dynamic> data) {
   final String namaKategori = data['kategori'] != null 
@@ -156,14 +188,15 @@ class _AdminAlatScreenState extends State<AdminAlatScreen> {
       
   final String? fotoUrl = data['foto_url'];
 
+ // CARD
   return Container(
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(10),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05), 
-          blurRadius: 15,
+          color: Colors.blue.withOpacity(0.15), 
+          blurRadius: 5,
           offset: const Offset(0, 5),
         )
       ],
