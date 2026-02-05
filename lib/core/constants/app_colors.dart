@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Warna Utama (Branding Selaras)
+  static const Color background = Color(0xFFF0F9FF); // Biru muda sangat lembut
   static const Color primaryBlue = Color(0xFF4EB7D9);
   
   // Warna Latar Belakang & Permukaan
-  static const Color background = Color(0xFFFFFFFF);
   static const Color scaffoldBg = Color(0xFFF8F9FA);
   
   // Warna Teks

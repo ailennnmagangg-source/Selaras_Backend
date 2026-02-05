@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/edit_alat_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/tambah_alat_screen.dart';
 import 'package:selaras_backend/features/admin/management_alat/logic/alat_controller.dart';
 import 'package:selaras_backend/features/shared/models/alat_model.dart';
@@ -33,6 +34,7 @@ class _AdminAlatScreenState extends State<AdminAlatScreen> {
               padding: const EdgeInsets.all(20),
               child: Container(
                 decoration: BoxDecoration(
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(color: AppColors.inputBorder),
                 ),
@@ -194,8 +196,24 @@ class _AdminAlatScreenState extends State<AdminAlatScreen> {
                 right: 8,
                 child: Row(
                   children: [
-                    _buildSmallActionIcon(Icons.edit, Colors.cyan, () {
-                      // Logika Edit
+                    // Cari bagian kode ikon edit kamu
+                    _buildSmallActionIcon(Icons.edit, Colors.cyan, () async {
+                      
+                      // TAMBAHKAN 'final' di depan 'result' agar variabel terdefinisi
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditAlatScreen(alatData: data),
+                        ),
+                      );
+
+                      // Sekarang 'result' sudah dikenal dan bisa dicek kondisinya
+                      if (result == true) {
+                        // Panggil fungsi untuk mengambil data ulang dari Supabase agar tampilan terupdate
+                        setState(() {
+                          // fetchAlat(); 
+                        });
+                      }
                     }),
                     const SizedBox(width: 8),
                     _buildSmallActionIcon(Icons.delete, Colors.red, () {

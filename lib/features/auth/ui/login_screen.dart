@@ -47,17 +47,37 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, // TAMBAHKAN INI: Agar semua isi Column rata kiri
             children: [
               const SizedBox(height: 40),
-              Image.asset('assets/images/login_illustration.png', height: 200),
+              // Agar gambar tetap di tengah, bungkus dengan Center atau Align
+              Center(
+                child: Image.asset('assets/images/login_illustration.png', height: 200),
+              ),
               const SizedBox(height: 20),
-              const Text("Login", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              Center(
+                child: Text(
+                  "Login", 
+                  style: TextStyle(
+                    fontSize: 24, 
+                    fontWeight: FontWeight.bold, 
+                    color: AppColors.textPrimary
+                  ),
+                ),
+              ),
               const SizedBox(height: 10),
-              const Text("Halo!", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-              const Text("Selaraskan kebutuhan,\noptimalkan fasilitas.", textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary)),
+              const Text(
+                "Halo!", 
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)
+              ),
+              const Text(
+                "Selaraskan kebutuhan,\noptimalkan fasilitas.", 
+                textAlign: TextAlign.start, // UBAH INI: Dari center ke start
+                style: TextStyle(color: AppColors.textSecondary)
+              ),
               const SizedBox(height: 30),
 
-              // Input Email
+              // Input Email (sudah akan otomatis lurus karena CrossAxisAlignment.start di atas)
               _buildLabel("Email"),
               TextField(
                 controller: _emailController,
@@ -124,8 +144,25 @@ class _LoginScreenState extends State<LoginScreen> {
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.textPlaceholder, fontSize: 14),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.inputBorder)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.inputBorder)),
+      filled: true,
+      fillColor: Colors.white, // Memberi warna putih agar terlihat ada area input
+      
+      // Border saat TIDAK diklik (Dibuat transparan agar terlihat tidak ada border)
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.transparent), 
+      ),
+      
+      // Border saat DIKLIK/FOKUS (Warna Biru)
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
+      ),
+
+      // Border default jika terjadi error (opsional)
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
     );
   }
 }
