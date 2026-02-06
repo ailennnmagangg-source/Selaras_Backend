@@ -17,6 +17,7 @@ class AppColors {
   static const Color textPrimary = Color(0xFF234F68); 
   static const Color textSecondary = Color(0xFF828282); 
   static const Color textPlaceholder = Color(0xFFBDBDBD);
+  static const Color subjudul = Color(0xFF8E9AAF);
   
   // Warna Status & Validasi
   static const Color error = Color(0xFFEB5757); 
@@ -30,4 +31,7 @@ class AppColors {
   // Warna Border & Divider
   static const Color border = Color(0xFFE0E0E0);
   static const Color inputBorder = Color(0xFFA5D8EA); 
+
+  //tombol
+  static const Color abumuda = Color(0xFFC0C0C0);
 }

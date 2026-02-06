@@ -1,36 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:selaras_backend/core/constants/app_colors.dart';
+import 'package:selaras_backend/features/shared/models/user_model.dart';
 import '../../../management_alat/logic/user_controller.dart';
 
-class TambahPeminjamScreen extends StatefulWidget {
-  const TambahPeminjamScreen({super.key});
+class EditPeminjamScreen extends StatefulWidget {
+  final UserModel user; // Menerima data user dari halaman list
+  const EditPeminjamScreen({super.key, required this.user});
 
   @override
-  State<TambahPeminjamScreen> createState() => _TambahPeminjamScreenState();
+  State<EditPeminjamScreen> createState() => _EditPeminjamScreenState();
 }
 
-class _TambahPeminjamScreenState extends State<TambahPeminjamScreen> {
-  final _namaController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passController = TextEditingController();
+class _EditPeminjamScreenState extends State<EditPeminjamScreen> {
+  late TextEditingController _namaController;
+  late TextEditingController _emailController;
   
-  // Default value untuk tipe peminjam
+  // Default value diambil dari data user yang sudah ada
   String _selectedTipe = 'Siswa'; 
-  bool _isObscure = true;
   bool _isLoading = false;
 
-  void _simpanData() async {
+  @override
+  void initState() {
+    super.initState();
+    // DATA LANGSUNG MUNCUL: Inisialisasi controller dengan data lama
+    _namaController = TextEditingController(text: widget.user.namaUsers);
+    _emailController = TextEditingController(text: widget.user.email);
+    
+    // Set tipe peminjam sesuai data di database (Siswa/Guru)
+    if (widget.user.tipeUser != null) {
+      // Memastikan huruf pertama kapital agar cocok dengan list dropdown
+      _selectedTipe = widget.user.tipeUser![0].toUpperCase() + widget.user.tipeUser!.substring(1);
+    }
+  }
+
+  @override
+  void dispose() {
+    _namaController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _updateData() async {
+    if (_namaController.text.isEmpty || _emailController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Nama dan email tidak boleh kosong")),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      await UserController().tambahAkun(
-        email: _emailController.text.trim(),
-        password: _passController.text.trim(),
+      // Memanggil fungsi updateUser yang sudah diperbaiki untuk Supabase
+      await UserController().updateUser(
+        id: widget.user.id,
         nama: _namaController.text.trim(),
-        role: 'peminjam', // Role otomatis diset sebagai peminjam
-        tipeUser: _selectedTipe, // guru atau siswa
+        email: _emailController.text.trim(),
+        role: 'peminjam',
+        tipeUser: _selectedTipe.toLowerCase(),
       );
+      
       if (mounted) {
-        Navigator.pop(context, true);
+        Navigator.pop(context, true); // Kembali ke list dan beri sinyal untuk refresh
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -47,10 +77,11 @@ class _TambahPeminjamScreenState extends State<TambahPeminjamScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: AppColors.primaryBlue),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.primaryBlue),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text("Tambah Peminjam", style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text("Edit Peminjam", 
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -69,26 +100,22 @@ class _TambahPeminjamScreenState extends State<TambahPeminjamScreen> {
             const SizedBox(height: 30),
 
             _buildLabel("Nama Pengguna"),
-            _buildTextField(_namaController, "Masukkan nama pengguna"),
+            _buildTextField(_namaController, "Masukkan nama peminjam"),
 
             const SizedBox(height: 20),
             _buildLabel("Email Pengguna"),
-            _buildTextField(_emailController, "Masukkan email pengguna"),
+            _buildTextField(_emailController, "Masukkan email peminjam"),
 
             const SizedBox(height: 20),
-            _buildLabel("Tipe Peminjam"), // Label diganti
-            _buildTipeDropdown(), // Dropdown khusus Tipe Peminjam
-
-            const SizedBox(height: 20),
-            _buildLabel("Kata Sandi"),
-            _buildPasswordField(),
+            _buildLabel("Tipe Peminjam"), 
+            _buildTipeDropdown(), 
 
             const SizedBox(height: 50),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _simpanData,
+                onPressed: _isLoading ? null : _updateData,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -96,16 +123,19 @@ class _TambahPeminjamScreenState extends State<TambahPeminjamScreen> {
                 ),
                 child: _isLoading 
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("Simpan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  : const Text("Simpan Perubahan", 
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
+            const SizedBox(height: 100), 
           ],
         ),
       ),
     );
   }
 
-  // Dropdown khusus Guru & Siswa sesuai gambar 2
+  // --- UI COMPONENTS (SAMA DENGAN TAMBAH PEMINJAM) ---
+
   Widget _buildTipeDropdown() {
     return Container(
       // Memberikan bayangan agar terlihat melayang sesuai gambar
@@ -169,7 +199,6 @@ class _TambahPeminjamScreenState extends State<TambahPeminjamScreen> {
     );
   }
 
-  // Menggunakan style yang sama dengan Staf (Tanpa border saat diam)
   Widget _buildTextField(TextEditingController controller, String hint) {
     return TextField(
       controller: controller,
@@ -185,32 +214,7 @@ class _TambahPeminjamScreenState extends State<TambahPeminjamScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primaryBlue, width: 1.5),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return TextField(
-      controller: _passController,
-      obscureText: _isObscure,
-      decoration: InputDecoration(
-        hintText: "Masukkan kata sandi",
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-        filled: true,
-        fillColor: Colors.white,
-        suffixIcon: IconButton(
-          icon: Icon(_isObscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: AppColors.primaryBlue),
-          onPressed: () => setState(() => _isObscure = !_isObscure),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primaryBlue, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
         ),
       ),
     );
@@ -219,7 +223,10 @@ class _TambahPeminjamScreenState extends State<TambahPeminjamScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(left: 5, bottom: 8),
-      child: Text(text, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
+      child: Text(text, style: const TextStyle(
+        color: AppColors.textPrimary, 
+        fontWeight: FontWeight.w600, 
+        fontSize: 14)),
     );
   }
 }

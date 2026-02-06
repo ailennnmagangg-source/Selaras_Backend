@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:selaras_backend/core/constants/app_colors.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/akun/tambah_peminjam_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/widgets/user_list_widget.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 import 'tambah_staff_screen.dart';
 
@@ -27,6 +27,7 @@ class _AdminAkunScreenState extends State<AdminAkunScreen> {
             "Daftar Akun Pengguna",
             style: TextStyle(
               color: AppColors.textPrimary,
+              fontSize: 20,
               fontWeight: FontWeight.bold
             ),
           ),
@@ -62,7 +63,7 @@ class _AdminAkunScreenState extends State<AdminAkunScreen> {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
             // Tab 1: Menampilkan Admin & Petugas
             UserListWidget(filterRole: ['admin', 'petugas']),
@@ -73,32 +74,35 @@ class _AdminAkunScreenState extends State<AdminAkunScreen> {
         floatingActionButton: Builder(
           builder: (context) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 30.0, right: 10.0),
+              padding: const EdgeInsets.only(bottom: 80.0, right: 10.0),
               child: FloatingActionButton(
                 onPressed: () async {
-                final tabIndex = DefaultTabController.of(context).index;
+                  // Mengambil index tab yang sedang aktif (0 untuk Staf, 1 untuk Peminjam)
+                  final currentTab = DefaultTabController.of(context).index;
+                  
+                  dynamic screen;
+                  if (currentTab == 0) {
+                    screen = const TambahStafScreen();
+                  } else {
+                    screen = const TambahPeminjamScreen();
+                  }
 
-                // 1. Definisikan variabel 'refresh' di sini untuk menampung hasil dari Navigator.pop
-                final refresh = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => tabIndex == 0 
-                        ? const TambahStafScreen() 
-                        : const TambahPeminjamScreen(),
-                  ),
-                );
+                  // Tunggu hasil (true) dari halaman tambah
+                  final shouldRefresh = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => screen),
+                  );
 
-                // 2. Sekarang variabel 'refresh' sudah terdefinisi dan bisa digunakan
-                if (refresh == true) {
-                  setState(() {
-                    // Mengambil data ulang agar akun baru langsung muncul
-                  });
-                }
-              },
-                
+                  // Jika kembali membawa 'true', jalankan setState
+                  if (shouldRefresh == true) {
+                    setState(() {
+                      // Kosong tidak apa-apa, ini memicu build ulang
+                    });
+                  }
+                },
                 backgroundColor: AppColors.primaryBlue,
                 shape: CircleBorder(),
-                child: const Icon(Icons.add, color: Colors.white,),
+                child: const Icon(Icons.add, color: Colors.white, size: 30,),
               ),
             );
           }

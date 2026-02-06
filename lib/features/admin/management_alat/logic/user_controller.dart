@@ -58,4 +58,46 @@ class UserController {
         throw Exception('Gagal menyimpan profil: $e');
       }
     }
+
+    // Tambahkan fungsi ini di dalam class UserController
+  Future<void> hapusUser(String id) async {
+    try {
+      // Menghapus data dari tabel 'users' berdasarkan ID
+      await supabase
+          .from('users')
+          .delete()
+          .eq('id', id);
+          
+      print("User berhasil dihapus dari database");
+    } catch (e) {
+      // Melempar error agar bisa ditangkap oleh Dialog UI untuk ditampilkan ke user
+      print("Error hapusUser: $e");
+      throw Exception("Gagal menghapus akun: $e");
+    }
+  }
+
+  Future<void> updateUser({
+    required String id,
+    required String nama,
+    required String email,
+    String? role,
+    String? tipeUser,
+  }) async {
+    try {
+      // Menggunakan Supabase .update() alih-alih Firestore
+      await supabase
+          .from('users')
+          .update({
+            'nama_users': nama, // Pastikan nama kolom sesuai tabel Supabase kamu
+            'email': email,
+            if (role != null) 'role': role.toLowerCase(),
+            'tipe_user': role?.toLowerCase() == 'peminjam' ? tipeUser : null,
+          })
+          .eq('id', id); // Filter berdasarkan ID user
+          
+    } catch (e) {
+      print("Error updateUser: $e");
+      throw Exception("Gagal memperbarui data: $e");
+    }
+  }
 }
