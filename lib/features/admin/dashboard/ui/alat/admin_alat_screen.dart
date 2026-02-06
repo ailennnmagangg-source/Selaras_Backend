@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/edit_alat_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/tambah_alat_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/tambah_kategori_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/alat/edit_alat_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/alat/tambah_alat_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/alat/tambah_kategori_screen.dart';
 import 'package:selaras_backend/features/admin/management_alat/logic/alat_controller.dart';
 import 'package:selaras_backend/features/shared/models/alat_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../../core/constants/app_colors.dart';
 
 class AdminAlatScreen extends StatefulWidget {
   const AdminAlatScreen({super.key});

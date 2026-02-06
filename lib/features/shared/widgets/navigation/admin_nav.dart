@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:selaras_backend/core/constants/app_colors.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/admin_aktivitas_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/admin_akun_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/admin_alat_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/aktivitas/admin_aktivitas_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/akun/admin_akun_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/alat/admin_alat_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/admin_home_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/admin_profile_screen.dart';
 // Import semua screen admin kamu di sini
