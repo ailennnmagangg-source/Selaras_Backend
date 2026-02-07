@@ -496,10 +496,11 @@ Widget build(BuildContext context) {
     ),
     // FloatingActionButton yang sudah dinaikkan posisinya
     floatingActionButton: Padding(
-      padding: const EdgeInsets.only(bottom: 80, right: 10),
+      padding: const EdgeInsets.only(bottom: 80.0, right: 10.0),
       child: FloatingActionButton(
         onPressed: _showTambahDialog,
         backgroundColor: AppColors.primaryBlue,
+        shape: CircleBorder(),
         elevation: 4,
         child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
