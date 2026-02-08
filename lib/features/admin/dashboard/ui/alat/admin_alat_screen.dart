@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/admin_home_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/widgets/alat_card_widget.dart';
 import 'package:selaras_backend/features/admin/management_alat/logic/alat_controller.dart';
+import 'package:selaras_backend/features/shared/widgets/navigation/admin_nav.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../shared/models/alat_model.dart';
@@ -24,17 +26,54 @@ class _AdminAlatScreenState extends State<AdminAlatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // 1. Tambahkan PopScope untuk menangani tombol back fisik HP
+    return PopScope(
+      canPop: false, // Mencegah aksi back standar
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // Paksa kembali ke Shell Utama agar Navbar tetap ada
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminMainShell()),
+        );
+      },
+    child: Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 20),
-            const Text(
-              "Manajemen Alat", 
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)
-            ),
             
+           // --- HEADER DENGAN TOMBOL KEMBALI ---
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.primaryBlue),
+                      onPressed: () {
+                        // 2. Arahkan ke AdminMainShell (bukan AdminHomeScreen langsung)
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AdminMainShell()),
+                        );
+                      },
+                    ),
+                    const Expanded(
+                      child: Text(
+                        "Manajemen Alat", 
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20, 
+                          fontWeight: FontWeight.bold, 
+                          color: AppColors.textPrimary
+                        )
+                      ),
+                    ),
+                    const SizedBox(width: 48), // Penyeimbang agar teks tetap di tengah
+                  ],
+                ),
+              ),
             _buildSearchBar(),
             _buildCategorySection(),
 
@@ -107,6 +146,7 @@ class _AdminAlatScreenState extends State<AdminAlatScreen> {
           child: const Icon(Icons.add, color: Colors.white, size: 30),
         ),
       )
+    ),
     );
   }
 
@@ -117,13 +157,21 @@ class _AdminAlatScreenState extends State<AdminAlatScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(30),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+          // TAMBAHKAN LINE DI BAWAH INI
+          border: Border.all(color: AppColors.primaryBlue, width: 1.5), 
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryBlue.withOpacity(0.05), 
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
         ),
         child: TextField(
           onChanged: (value) => setState(() => searchQuery = value),
           decoration: const InputDecoration(
             hintText: "Cari alat...",
-            prefixIcon: Icon(Icons.search, color: Colors.grey),
+            prefixIcon: Icon(Icons.search, color: Color(0xFF4FA8C5)), // Ikon juga jadi biru agar serasi
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(vertical: 15),
           ),

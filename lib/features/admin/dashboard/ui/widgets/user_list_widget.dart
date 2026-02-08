@@ -7,13 +7,22 @@ import '../../../../shared/models/user_model.dart';
 
 class UserListWidget extends StatefulWidget {
   final List<String> filterRole;
-  const UserListWidget({required this.filterRole, super.key});
+  final String query; // Tambahkan variabel ini
+
+  // Tambahkan query ke constructor agar wajib diisi atau default ""
+  const UserListWidget({
+    required this.filterRole, 
+    this.query = "", 
+    super.key
+  });
 
   @override
   State<UserListWidget> createState() => _UserListWidgetState();
 }
 
 class _UserListWidgetState extends State<UserListWidget> {
+  final UserController _controller = UserController();
+
   // Fungsi untuk memicu build ulang saat data dihapus
   void _refreshData() {
     setState(() {});
@@ -131,7 +140,7 @@ class _UserListWidgetState extends State<UserListWidget> {
 
     return FutureBuilder<List<UserModel>>(
       // Gunakan widget.filterRole karena sekarang di dalam State
-      future: controller.getUsersByRole(widget.filterRole),
+      future: _controller.getUsersByRole(widget.filterRole, query: widget.query),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

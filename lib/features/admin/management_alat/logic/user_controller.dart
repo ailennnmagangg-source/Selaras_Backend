@@ -4,16 +4,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class UserController {
   final supabase = Supabase.instance.client;
 
-  // 1. Mengambil data berdasarkan Role
-  Future<List<UserModel>> getUsersByRole(List<String> roles) async {
+  //pencarian
+  Future<List<UserModel>> getUsersByRole(List<String> roles, {String query = ""}) async {
     try {
-      final response = await supabase
-          .from('users')
-          .select()
-          .inFilter('role', roles); 
+      // 1. Buat query dasar
+      var supabaseQuery = supabase.from('users').select();
 
+      // 2. Filter berdasarkan kumpulan role
+      supabaseQuery = supabaseQuery.inFilter('role', roles);
+
+      // 3. JIKA user mengetik sesuatu, tambahkan filter nama
+      if (query.isNotEmpty) {
+        // ilike = case-insensitive (A dan a dianggap sama)
+        supabaseQuery = supabaseQuery.ilike('nama_users', '%$query%');
+      }
+
+      // 4. Urutkan agar rapi sesuai abjad
+      final response = await supabaseQuery.order('nama_users');
+
+      // 5. Ubah data mentah (Map) menjadi list model
       return (response as List).map((e) => UserModel.fromJson(e)).toList();
     } catch (e) {
+      print("Error di getUsersByRole: $e");
       throw Exception('Gagal mengambil data user: $e');
     }
   }
@@ -100,4 +112,5 @@ class UserController {
       throw Exception("Gagal memperbarui data: $e");
     }
   }
+  
 }

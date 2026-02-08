@@ -394,7 +394,7 @@ class _TambahKategoriPageState extends State<TambahKategoriPage> {
   @override
 Widget build(BuildContext context) {
   return Scaffold(
-    backgroundColor: AppColors.background, // Warna latar belakang sesuai gambar 1
+    backgroundColor: Colors.white, // Warna latar belakang sesuai gambar 1
     appBar: AppBar(
       centerTitle: true,
       title: const Text(
