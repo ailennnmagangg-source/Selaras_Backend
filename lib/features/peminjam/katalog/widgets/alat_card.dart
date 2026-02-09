@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 // Import model pusat
 import 'package:selaras_backend/features/shared/models/alat_model.dart';
 
-import '../logic/alat_model.dart';
-
 class AlatCard extends StatelessWidget {
   final AlatModel alat;
+  final String namaKategori;
   final VoidCallback onAdd;
 
   const AlatCard({
     super.key,
     required this.alat,
+    required this.namaKategori,
     required this.onAdd,
   });
 
@@ -40,13 +40,28 @@ class AlatCard extends StatelessWidget {
                 color: const Color(0xFF5AB9D5).withOpacity(0.05),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
               ),
-              child: Hero(
-                tag: 'alat_${alat.idAlat}',
-                child: Icon(
-                  _getIconForKategori(alat.namaKategori),
-                  size: 50,
-                  color: const Color(0xFF5AB9D5).withOpacity(0.5),
-                ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                child: alat.fotoUrl != null && alat.fotoUrl!.isNotEmpty
+                    ? Image.network(
+                        alat.fotoUrl!,
+                        fit: BoxFit.cover, // Agar gambar memenuhi area kartu
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          // Tampilan jika link gambar rusak atau tidak ditemukan
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                              Text(namaKategori, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                            ],
+                          );
+                        },
+                      )
+                    : const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
               ),
             ),
           ),
@@ -71,7 +86,7 @@ class AlatCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        alat.namaKategori, 
+                        namaKategori, 
                         style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -131,18 +146,5 @@ class AlatCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  IconData _getIconForKategori(String kategori) {
-    switch (kategori.toLowerCase()) {
-      case 'elektronik':
-        return Icons.devices_rounded;
-      case 'pertukangan':
-        return Icons.build_rounded;
-      case 'kesehatan':
-        return Icons.medical_services_rounded;
-      default:
-        return Icons.inventory_2_rounded;
-    }
   }
 }

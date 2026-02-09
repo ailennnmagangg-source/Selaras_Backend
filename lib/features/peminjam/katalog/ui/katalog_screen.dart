@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:selaras_backend/features/peminjam/katalog/logic/alat_model.dart';
 import 'package:selaras_backend/features/peminjam/katalog/widgets/alat_card.dart';
 import 'package:selaras_backend/features/peminjam/keranjang/peminjaman_form_screen.dart';
-// IMPORT DIPERBAIKI: Menghapus 'hide AlatModel' agar tipe datanya sinkron
-import 'package:selaras_backend/features/shared/models/alat_model.dart';
+import 'package:selaras_backend/features/shared/models/alat_model.dart'; // Pastikan import ini benar
+import '../../../../core/constants/app_colors.dart';
+import '../logic/katalog_controller.dart';
 
 class KatalogScreen extends StatefulWidget {
   const KatalogScreen({super.key});
@@ -13,28 +13,45 @@ class KatalogScreen extends StatefulWidget {
 }
 
 class _KatalogScreenState extends State<KatalogScreen> {
-  // --- DATA DUMMY UNTUK UI (Pengganti Database) ---
-  final List<Map<String, dynamic>> dummyKategori = [
-    {'id_kategori': 0, 'nama_kategori': 'Semua'},
-    {'id_kategori': 1, 'nama_kategori': 'Elektronik'},
-    {'id_kategori': 2, 'nama_kategori': 'Pertukangan'},
-    {'id_kategori': 3, 'nama_kategori': 'Kesehatan'},
-  ];
+  final KatalogController _controller = KatalogController();
+  Map<int, String> kategoriMap = {};
 
-  final List<AlatModel> dummyAlat = [
-    AlatModel(idAlat: 1, namaAlat: "Kamera DSLR", namaKategori: "Elektronik", stokTotal: 5),
-    AlatModel(idAlat: 2, namaAlat: "Bor Listrik", namaKategori: "Pertukangan", stokTotal: 3),
-    AlatModel(idAlat: 3, namaAlat: "Laptop ROG", namaKategori: "Elektronik", stokTotal: 2),
-    AlatModel(idAlat: 4, namaAlat: "Tensimeter", namaKategori: "Kesehatan", stokTotal: 10),
-    AlatModel(idAlat: 5, namaAlat: "Gergaji Mesin", namaKategori: "Pertukangan", stokTotal: 4),
-  ];
+  Future<void> _loadKategori() async {
+  final data = await _controller.fetchKategori();
 
-  // --- STATE UI ---
+  setState(() {
+    kategoriMap = {
+      for (var item in data)
+        item['id_kategori']: item['nama_kategori']
+    };
+  });
+}
+
+  
   List<AlatModel> cart = [];
   int selectedKategoriId = 0;
   String searchQuery = "";
+  late Future<List<Map<String, dynamic>>> _kategoriFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadKategori();
+    _kategoriFuture = _controller.fetchKategori();
+  }
 
   void _addToCart(AlatModel alat) {
+    // Validasi Stok Real-time dari Database
+    if (alat.stokTotal <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Maaf, stok ${alat.namaAlat} sedang kosong"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       cart.add(alat);
     });
@@ -45,7 +62,6 @@ class _KatalogScreenState extends State<KatalogScreen> {
         content: Text("${alat.namaAlat} ditambah ke keranjang"),
         duration: const Duration(milliseconds: 800),
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.only(bottom: 90, left: 20, right: 20), // Agar tidak tertutup floating cart
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
@@ -53,17 +69,6 @@ class _KatalogScreenState extends State<KatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Logic Filter Data secara lokal (Client-side filtering)
-    final filteredData = dummyAlat.where((alat) {
-      final matchSearch = alat.namaAlat.toLowerCase().contains(searchQuery.toLowerCase());
-      
-      // Filter kategori berdasarkan nama kategori di dummyAlat
-      final selectedKategori = dummyKategori.firstWhere((k) => k['id_kategori'] == selectedKategoriId);
-      final matchKategori = selectedKategoriId == 0 || alat.namaKategori == selectedKategori['nama_kategori'];
-      
-      return matchSearch && matchKategori;
-    }).toList();
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -72,7 +77,11 @@ class _KatalogScreenState extends State<KatalogScreen> {
         centerTitle: true,
         title: const Text(
           "Katalog Alat",
-          style: TextStyle(color: Color(0xFF2D4379), fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Color(0xFF1A4D7C), 
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
         actions: [
           IconButton(
@@ -86,31 +95,56 @@ class _KatalogScreenState extends State<KatalogScreen> {
           Column(
             children: [
               _buildSearchBar(),
-              _buildKategoriList(),
+              _buildDynamicKategori(),
               Expanded(
-                child: filteredData.isEmpty 
-                  ? _buildEmptyState() 
-                  : GridView.builder(
+                child: FutureBuilder<List<AlatModel>>(
+                  // Menarik data alat berdasarkan kategori yang dipilih
+                  future: _controller.fetchAlat(idKategori: selectedKategoriId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: Color(0xFF5AB9D5)));
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(child: Text("Terjadi kesalahan: ${snapshot.error}"));
+                    }
+
+                    final allAlat = snapshot.data ?? [];
+                    // Filtering client-side untuk pencarian nama
+                    final filteredData = allAlat.where((alat) {
+                      return alat.namaAlat.toLowerCase().contains(searchQuery.toLowerCase());
+                    }).toList();
+
+                    if (filteredData.isEmpty) {
+                      return _buildEmptyState();
+                    }
+
+                    return GridView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        childAspectRatio: 0.75,
+                        childAspectRatio: 0.72,
                         crossAxisSpacing: 15,
                         mainAxisSpacing: 15,
                       ),
                       itemCount: filteredData.length,
                       itemBuilder: (context, index) {
+                        final alat = filteredData[index];
+
                         return AlatCard(
-                          alat: filteredData[index],
-                          onAdd: () => _addToCart(filteredData[index]),
+                          alat: alat,
+                          namaKategori: kategoriMap[alat.idKategori] ?? "Tidak diketahui",
+                          onAdd: () => _addToCart(alat),
                         );
                       },
-                    ),
+
+                    );
+                  },
+                ),
               ),
             ],
           ),
           
-          // Floating Cart (Hanya muncul jika ada item)
           if (cart.isNotEmpty)
             Positioned(
               bottom: 20,
@@ -123,8 +157,6 @@ class _KatalogScreenState extends State<KatalogScreen> {
     );
   }
 
-  // --- WIDGET COMPONENTS ---
-
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -133,13 +165,12 @@ class _KatalogScreenState extends State<KatalogScreen> {
         decoration: BoxDecoration(
           color: Colors.grey[50],
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: const Color(0xFF5AB9D5).withOpacity(0.3)),
+          border: Border.all(color: const Color(0xFF5AB9D5).withOpacity(0.5)),
         ),
         child: TextField(
           onChanged: (value) => setState(() => searchQuery = value),
           decoration: const InputDecoration(
-            hintText: "Cari alat praktikum...",
-            hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
+            hintText: "Cari produk disini...",
             prefixIcon: Icon(Icons.search, color: Color(0xFF5AB9D5)),
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(vertical: 12),
@@ -149,49 +180,99 @@ class _KatalogScreenState extends State<KatalogScreen> {
     );
   }
 
-  Widget _buildKategoriList() {
-    return SizedBox(
-      height: 45,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: dummyKategori.length,
-        itemBuilder: (context, index) {
-          final item = dummyKategori[index];
-          bool isSelected = selectedKategoriId == item['id_kategori'];
+  Widget _buildDynamicKategori() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _kategoriFuture,
+      builder: (context, snapshot) {
+        List<Map<String, dynamic>> kategoriList = [
+          {'id_kategori': 0, 'nama_kategori': 'Semua'}
+        ];
+        if (snapshot.hasData) {
+          kategoriList.addAll(snapshot.data!);
+        }
 
-          return GestureDetector(
-            onTap: () => setState(() => selectedKategoriId = item['id_kategori']),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(right: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF5AB9D5) : Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: isSelected ? const Color(0xFF5AB9D5) : Colors.grey.shade300,
+        return SizedBox(
+          height: 45,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: kategoriList.length,
+            itemBuilder: (context, index) {
+              final item = kategoriList[index];
+              int id = item['id_kategori'];
+              bool isSelected = selectedKategoriId == id;
+
+              return GestureDetector(
+                onTap: () => setState(() => selectedKategoriId = id),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF5AB9D5) : Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: isSelected ? const Color(0xFF5AB9D5) : Colors.grey.shade300),
+                  ),
+                  child: Text(
+                    item['nama_kategori'],
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
                 ),
-                boxShadow: isSelected ? [
-                  BoxShadow(
-                    color: const Color(0xFF5AB9D5).withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  )
-                ] : null,
-              ),
-              child: Text(
-                item['nama_kategori'],
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black87,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 13,
-                ),
-              ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFloatingCartCard() {
+    return Hero(
+      tag: 'cart_floating',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => PeminjamanFormScreen(selectedItems: cart)
+              )
+            );
+          },
+          child: Container(
+            height: 65,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))],
             ),
-          );
-        },
+            child: Row(
+              children: [
+                Badge(
+                  label: Text("${cart.length}"),
+                  child: Icon(Icons.shopping_basket_outlined, color: Color(0xFF5AB9D5), size: 30),
+                ),
+                const SizedBox(width: 15),
+                const Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Keranjang Peminjaman", style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text("Lanjutkan ke formulir", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF5AB9D5), size: 20),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -201,74 +282,9 @@ class _KatalogScreenState extends State<KatalogScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[200]),
-          const SizedBox(height: 10),
-          const Text(
-            "Alat tidak ditemukan", 
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
+          Icon(Icons.search_off_rounded, size: 80, color: Colors.grey[300]),
+          Text("Alat tidak ditemukan", style: TextStyle(color: Colors.grey[600])),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFloatingCartCard() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context, 
-          MaterialPageRoute(
-            builder: (context) => PeminjamanFormScreen(selectedItems: cart),
-          ),
-        );
-      },
-      child: Container(
-        height: 65,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1), 
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            )
-          ],
-        ),
-        child: Row(
-          children: [
-            Badge(
-              label: Text("${cart.length}"),
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF5AB9D5), 
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.shopping_basket_outlined, color: Colors.white, size: 22),
-              ),
-            ),
-            const SizedBox(width: 15),
-            const Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Keranjang Peminjaman", 
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  Text(
-                    "Ketuk untuk isi formulir", 
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF5AB9D5), size: 18),
-          ],
-        ),
       ),
     );
   }
