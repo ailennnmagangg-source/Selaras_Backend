@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/admin_home_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/widgets/alat_card_widget.dart';
+import 'package:selaras_backend/features/admin/dashboard/alat/widgets/alat_card_widget.dart';
 import 'package:selaras_backend/features/admin/management_alat/logic/alat_controller.dart';
 import 'package:selaras_backend/features/shared/widgets/navigation/admin_nav.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../../core/constants/app_colors.dart';
-import '../../../../shared/models/alat_model.dart';
+import '../../../../core/constants/app_colors.dart';
 import 'edit_alat_screen.dart';
 import 'tambah_alat_screen.dart';
 import 'tambah_kategori_screen.dart';

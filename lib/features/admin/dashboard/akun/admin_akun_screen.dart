@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selaras_backend/core/constants/app_colors.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/admin_home_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/akun/tambah_peminjam_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/widgets/user_list_widget.dart';
+import 'package:selaras_backend/features/admin/dashboard/akun/tambah_peminjam_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/alat/widgets/user_list_widget.dart';
 import 'package:selaras_backend/features/shared/widgets/navigation/admin_nav.dart';
 import 'tambah_staff_screen.dart';
 

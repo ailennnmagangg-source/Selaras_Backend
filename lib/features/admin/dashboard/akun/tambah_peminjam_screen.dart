@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:selaras_backend/core/constants/app_colors.dart';
-import '../../../management_alat/logic/user_controller.dart';
+import '../../management_alat/logic/user_controller.dart';
 
 class TambahPeminjamScreen extends StatefulWidget {
   const TambahPeminjamScreen({super.key});

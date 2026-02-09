@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/aktivitas/aktivitas_controller.dart';
+import 'package:selaras_backend/features/admin/dashboard/aktivitas/aktivitas_controller.dart';
 import 'package:intl/intl.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/aktivitas/widgets/edit_tanggal_dialog.dart';
+import 'package:selaras_backend/features/admin/dashboard/aktivitas/widgets/edit_tanggal_dialog.dart';
 
-import 'package:selaras_backend/features/admin/dashboard/ui/aktivitas/widgets/hapus_konfirmasi_dialog.dart';
+import 'package:selaras_backend/features/admin/dashboard/aktivitas/widgets/hapus_konfirmasi_dialog.dart';
 import 'package:selaras_backend/features/shared/models/peminjaman_model.dart';
 
 class AktivitasScreen extends StatefulWidget {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/dashboard_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Import Constants & Config
@@ -10,10 +11,6 @@ import 'features/auth/ui/splash_screen.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/logic/role_wrapper.dart';
 
-// Import Dashboards (Sesuaikan path dengan struktur folder baru)
-import 'features/admin/dashboard/ui/admin_home_screen.dart';
-// import 'features/petugas/dashboard/ui/petugas_home_screen.dart';
-// import 'features/peminjam/katalog/ui/katalog_peminjam_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +49,7 @@ class MyApp extends StatelessWidget {
         '/role-wrapper': (context) => const RoleWrapper(),
         
         // Dashboard masing-masing role
-        '/admin-home': (context) => const AdminHomeScreen(),
+        '/admin-home': (context) =>  AdminDashboardScreen(),
         // '/petugas-home': (context) => const PetugasHomeScreen(),
         // '/peminjam-home': (context) => const KatalogPeminjamScreen(),
       },

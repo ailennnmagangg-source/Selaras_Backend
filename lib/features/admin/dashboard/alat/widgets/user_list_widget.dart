@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selaras_backend/core/constants/app_colors.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/akun/edit_peminjam_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/akun/edit_staf_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/akun/edit_peminjam_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/akun/edit_staf_screen.dart';
 import 'package:selaras_backend/features/admin/management_alat/logic/user_controller.dart';
 import '../../../../shared/models/user_model.dart';
 

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:selaras_backend/core/constants/app_colors.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/aktivitas/ui/admin_aktivitas_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/akun/admin_akun_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/alat/admin_alat_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/admin_home_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/aktivitas/ui/admin_aktivitas_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/akun/admin_akun_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/alat/admin_alat_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/dashboard_screen.dart';
 import 'package:selaras_backend/features/shared/widgets/profile_screen.dart';
 // Import semua screen admin kamu di sini
 
@@ -20,7 +19,7 @@ class _AdminMainShellState extends State<AdminMainShell> {
 
   // Daftar halaman berdasarkan urutan di Navbar
   final List<Widget> _pages = [
-    const AdminHomeScreen(), // Ganti dengan AdminHomeScreen()
+    AdminDashboardScreen(), // Ganti dengan AdminHomeScreen()
     const AdminAlatScreen(),
     const AdminAkunScreen(),
     AktivitasScreen(),

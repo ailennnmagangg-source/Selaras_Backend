@@ -15,6 +15,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   image_picker: ^1.2.1
   intl: ^0.19.0 #tanggal
+  fl_chart: ^0.66.0 # donat
 
 dev_dependencies:
   flutter_test:
