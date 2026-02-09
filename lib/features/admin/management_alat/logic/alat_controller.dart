@@ -9,19 +9,27 @@ class AlatController {
   // 1. Ambil data alat (Mendukung Search & Filter Kategori)
   Future<List<Map<String, dynamic>>> fetchAlat({String? query, String? kategori}) async {
     try {
-      var request = _supabase.from('alat').select('''
+      // Menambahkan !inner agar baris yang tidak cocok dengan filter kategori benar-benar dihapus dari hasil
+      String selectQuery = '''
         *,
-        kategori:id_kategori (
+        kategori:id_kategori!inner (
           nama_kategori
         )
-      ''');
+      ''';
+
+      // Jika kategori "Semua", jangan gunakan !inner agar performa lebih ringan (select biasa)
+      if (kategori == null || kategori == "Semua") {
+        selectQuery = '*, kategori:id_kategori (nama_kategori)';
+      }
+
+      var request = _supabase.from('alat').select(selectQuery);
 
       // Filter Pencarian Nama
       if (query != null && query.isNotEmpty) {
         request = request.ilike('nama_alat', '%$query%');
       }
 
-      // Filter Kategori (Berdasarkan nama kategori di tabel relasi)
+      // Filter Kategori
       if (kategori != null && kategori != "Semua") {
         request = request.eq('kategori.nama_kategori', kategori);
       }
@@ -33,7 +41,7 @@ class AlatController {
       return [];
     }
   }
-
+  
   // 2. Ambil kategori untuk Dropdown & Filter Chips
   Future<List<Map<String, dynamic>>> fetchKategori() async {
     try {

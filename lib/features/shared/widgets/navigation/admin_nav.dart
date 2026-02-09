@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:selaras_backend/core/constants/app_colors.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/aktivitas/admin_aktivitas_screen.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/aktivitas/ui/admin_aktivitas_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/akun/admin_akun_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/alat/admin_alat_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/admin_home_screen.dart';
-import 'package:selaras_backend/features/admin/dashboard/ui/admin_profile_screen.dart';
+import 'package:selaras_backend/features/shared/widgets/profile_screen.dart';
 // Import semua screen admin kamu di sini
 
 class AdminMainShell extends StatefulWidget {
@@ -23,8 +23,8 @@ class _AdminMainShellState extends State<AdminMainShell> {
     const AdminHomeScreen(), // Ganti dengan AdminHomeScreen()
     const AdminAlatScreen(),
     const AdminAkunScreen(),
-    const AdminAktivitasScreen(),
-    const AdminProfileScreen(),
+    AktivitasScreen(),
+    const ProfileScreen(roleLabel: "Admin"),
   ];
 
   void _onItemTapped(int index) {

@@ -15,17 +15,45 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isObscure = true;
   bool _isLoading = false;
-  String? _errorMessage;
+  // Tambahkan variabel ini di dalam _LoginScreenState
+  String? _emailError;
+  String? _passwordError;
 
   void _handleLogin() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _emailError = null;
+      _passwordError = null;
+      _isLoading = true;
+    });
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // 1. Validasi Input Kosong
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        if (email.isEmpty) _emailError = "Email wajib diisi!";
+        if (password.isEmpty) _passwordError = "Kata sandi wajib diisi!";
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
-      await AuthController().login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-      
-      // Jika login sukses, pindah ke RoleWrapper untuk dicek rolenya
+      // 2. CEK APAKAH EMAIL TERDAFTAR DI DATABASE
+      final bool isEmailRegistered = await AuthController().checkEmailExists(email);
+
+      if (!isEmailRegistered) {
+        setState(() {
+          _emailError = "Akun tidak ditemukan!"; // Error muncul di field Email
+          _isLoading = false;
+        });
+        return; // Berhenti, jangan lanjut ke proses login
+      }
+
+      // 3. JIKA EMAIL DITEMUKAN, BARU PROSES LOGIN
+      await AuthController().login(email, password);
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -33,9 +61,16 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      setState(() => _errorMessage = "Email atau password salah");
+      String errorMsg = e.toString();
+      debugPrint("Login Error Log: $errorMsg");
+
+      setState(() {
+        // Karena email sudah dipastikan ada di database (langkah 2),
+        // maka jika login gagal di sini, penyebabnya pasti password salah.
+        _passwordError = "Kata sandi salah!"; // Error muncul di field Password
+      });
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -77,33 +112,44 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 30),
 
-              // Input Email (sudah akan otomatis lurus karena CrossAxisAlignment.start di atas)
-              _buildLabel("Email"),
-              TextField(
-                controller: _emailController,
-                decoration: _inputDecoration("Masukkan alamat email Anda"),
+              // --- Bagian Input Email ---
+            _buildLabel("Email"),
+            TextField(
+              controller: _emailController,
+              decoration: _inputDecoration(
+                "Masukkan alamat email Anda", 
+                isError: _emailError != null // Tambahkan parameter isError
               ),
-              
-              const SizedBox(height: 20),
+            ),
+            if (_emailError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Text(_emailError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ),
+            
+            const SizedBox(height: 20),
 
-              // Input Password
-              _buildLabel("Kata Sandi"),
-              TextField(
-                controller: _passwordController,
-                obscureText: _isObscure,
-                decoration: _inputDecoration("Masukkan kata sandi Anda").copyWith(
-                  suffixIcon: IconButton(
-                    icon: Icon(_isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: AppColors.primaryBlue),
-                    onPressed: () => setState(() => _isObscure = !_isObscure),
-                  ),
+            // --- Bagian Input Password ---
+            _buildLabel("Kata Sandi"),
+            TextField(
+              controller: _passwordController,
+              obscureText: _isObscure,
+              decoration: _inputDecoration(
+                "Masukkan kata sandi Anda", 
+                isError: _passwordError != null
+              ).copyWith(
+                suffixIcon: IconButton(
+                  icon: Icon(_isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, 
+                        color: _passwordError != null ? Colors.red : AppColors.primaryBlue),
+                  onPressed: () => setState(() => _isObscure = !_isObscure),
                 ),
               ),
-
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(_errorMessage!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
-                ),
+            ),
+            if (_passwordError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Text(_passwordError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ),
 
               const SizedBox(height: 40),
 
@@ -139,29 +185,30 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(String hint, {bool isError = false}) {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.textPlaceholder, fontSize: 14),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       filled: true,
-      fillColor: Colors.white, // Memberi warna putih agar terlihat ada area input
+      fillColor: Colors.white,
       
-      // Border saat TIDAK diklik (Dibuat transparan agar terlihat tidak ada border)
+      // Border saat diam
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.transparent), 
+        borderSide: BorderSide(
+          color: isError ? Colors.red : Colors.transparent, // Merah jika error
+          width: isError ? 1.5 : 1,
+        ), 
       ),
       
-      // Border saat DIKLIK/FOKUS (Warna Biru)
+      // Border saat diklik
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
-      ),
-
-      // Border default jika terjadi error (opsional)
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: isError ? Colors.red : AppColors.primaryBlue, 
+          width: 2
+        ),
       ),
     );
   }

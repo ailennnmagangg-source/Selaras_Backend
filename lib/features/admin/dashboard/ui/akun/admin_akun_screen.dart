@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:selaras_backend/core/constants/app_colors.dart';
+import 'package:selaras_backend/features/admin/dashboard/ui/admin_home_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/akun/tambah_peminjam_screen.dart';
 import 'package:selaras_backend/features/admin/dashboard/ui/widgets/user_list_widget.dart';
-
-
+import 'package:selaras_backend/features/shared/widgets/navigation/admin_nav.dart';
 import 'tambah_staff_screen.dart';
 
 class AdminAkunScreen extends StatefulWidget {
@@ -14,98 +14,145 @@ class AdminAkunScreen extends StatefulWidget {
 }
 
 class _AdminAkunScreenState extends State<AdminAkunScreen> {
+  // Variabel penampung teks pencarian
+  String searchQuery = "";
+
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2, // Dua tab: Staf dan Peminjam
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminMainShell()),
+        );
+      },
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
           backgroundColor: Colors.white,
-          centerTitle: true,
-          title: const Text(
-            "Daftar Akun Pengguna",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.bold
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.primaryBlue),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AdminMainShell()),
+                );
+              },
+            ),
+            centerTitle: true,
+            title: const Text(
+              "Daftar Akun Pengguna",
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            automaticallyImplyLeading: false,
+            // --- PERBAIKAN STRUKTUR BOTTOM APPBAR ---
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(115), // Sedikit lebih tinggi agar bayangan tidak terpotong
+              child: Column(
+                children: [
+                  // UI SEARCH BAR PREMIUM VERSION
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30), // Membuat bentuk stadium/bulat sempurna
+                        border: Border.all(color: AppColors.primaryBlue, width: 1.5), // Border biru tegas
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryBlue.withOpacity(0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            searchQuery = value;
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          hintText: "Cari nama pengguna...",
+                          hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                          prefixIcon: Icon(Icons.search, color: AppColors.primaryBlue),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // TabBar diletakkan di dalam Column yang sama
+                  const TabBar(
+                    labelColor: AppColors.primaryBlue,
+                    unselectedLabelColor: AppColors.textPlaceholder,
+                    indicatorColor: AppColors.primaryBlue,
+                    indicatorWeight: 3,
+                    labelStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    unselectedLabelStyle: TextStyle(
+                      fontWeight: FontWeight.normal,
+                      fontSize: 14,
+                    ),
+                    tabs: [
+                      Tab(text: "Manajemen Staf"),
+                      Tab(text: "Manajemen Peminjam"),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-
-          automaticallyImplyLeading: false, //panah
-          elevation: 0, // Menghilangkan garis bawah appBar agar menyatu dengan background
-          bottom: const TabBar(
-            // Warna teks/icon saat Tab dipilih (Aktif)
-            labelColor: AppColors.primaryBlue,
-
-            // Warna teks/icon saat Tab TIDAK dipilih
-            unselectedLabelColor: AppColors.textPlaceholder,
-
-            // Warna garis bawah (indicator) saat aktif
-            indicatorColor: AppColors.primaryBlue,
-
-            // Ketebalan garis indikator (opsional agar lebih mirip gambar)
-            indicatorWeight: 3,
-
-            // --- TAMBAHKAN INI UNTUK TEKS TEBAL ---
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.bold, // Teks jadi tebal saat aktif
-              fontSize: 14,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.normal, // Teks biasa saat tidak aktif
-              fontSize: 14,
-            ),
-
-            tabs: [
-              Tab(text: "Manajemen Staf"),
-              Tab(text: "Manajemen Peminjam"),
+          body: TabBarView(
+            children: [
+              // Jangan lupa teruskan searchQuery ke widget list
+              UserListWidget(
+                filterRole: const ['admin', 'petugas'],
+                query: searchQuery,
+              ),
+              UserListWidget(
+                filterRole: const ['peminjam'],
+                query: searchQuery,
+              ),
             ],
           ),
-        ),
-        body: TabBarView(
-          children: [
-            // Tab 1: Menampilkan Admin & Petugas
-            UserListWidget(filterRole: ['admin', 'petugas']),
-            // Tab 2: Menampilkan Peminjam (Siswa & Guru)
-            UserListWidget(filterRole: ['peminjam']),
-          ],
-        ),
-        floatingActionButton: Builder(
-          builder: (context) {
+          floatingActionButton: Builder(builder: (context) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 80.0, right: 10.0),
               child: FloatingActionButton(
                 onPressed: () async {
-                  // Mengambil index tab yang sedang aktif (0 untuk Staf, 1 untuk Peminjam)
                   final currentTab = DefaultTabController.of(context).index;
-                  
-                  dynamic screen;
-                  if (currentTab == 0) {
-                    screen = const TambahStafScreen();
-                  } else {
-                    screen = const TambahPeminjamScreen();
-                  }
 
-                  // Tunggu hasil (true) dari halaman tambah
+                  Widget screen = currentTab == 0
+                      ? const TambahStafScreen()
+                      : const TambahPeminjamScreen();
+
                   final shouldRefresh = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => screen),
                   );
 
-                  // Jika kembali membawa 'true', jalankan setState
                   if (shouldRefresh == true) {
-                    setState(() {
-                      // Kosong tidak apa-apa, ini memicu build ulang
-                    });
+                    setState(() {});
                   }
                 },
                 backgroundColor: AppColors.primaryBlue,
-                shape: CircleBorder(),
-                child: const Icon(Icons.add, color: Colors.white, size: 30,),
+                shape: const CircleBorder(),
+                child: const Icon(Icons.add, color: Colors.white, size: 30),
               ),
             );
-          }
+          }),
         ),
       ),
     );
