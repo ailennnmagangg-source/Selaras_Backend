@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:selaras_backend/core/constants/app_colors.dart';
+import 'package:selaras_backend/features/peminjam/riwayat_saya/peminjam_riwayat_screen.dart';
 import 'package:selaras_backend/features/shared/models/alat_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 
 class PeminjamanFormScreen extends StatefulWidget {
@@ -12,12 +15,72 @@ class PeminjamanFormScreen extends StatefulWidget {
 }
 
 class _PeminjamanFormScreenState extends State<PeminjamanFormScreen> {
-  final _namaController = TextEditingController();
+  final TextEditingController _namaController = TextEditingController();
+  
   
   DateTime? _tglAmbil;
   String? _jamAmbil; // Diubah jadi String untuk menyimpan hasil seleksi list
   DateTime? _tglTenggat;
   String? _jamTenggat;
+
+  void _showSuccessPopup() {
+  showDialog(
+    context: context,
+    barrierDismissible: false, // User harus klik tombol 'Oke'
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Dialog mengikuti ukuran konten
+            children: [
+              const Text(
+                "Menunggu Persetujuan",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D4379),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+             Image.asset(
+                'assets/images/image_verifikasi.png',
+                height: 140,
+                errorBuilder: (context, error, stackTrace) {
+                  // Jika asset masih error, munculkan icon sebagai cadangan
+                  return const Icon(Icons.mark_email_read_outlined, size: 100, color: Color(0xFF5AB9D5));
+                },
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "Pengajuan berhasil dikirim!\nPantau status persetujuan Anda secara berkala di halaman Riwayat.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 25),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Tutup dialog
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PeminjamRiwayatScreen()),
+                    );
+                  },
+                  child: const Text("Oke"),
+                )
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
 
   // --- FORMATTER HELPER ---
   String formatDate(DateTime? date) => 
@@ -39,61 +102,109 @@ class _PeminjamanFormScreenState extends State<PeminjamanFormScreen> {
 
   // --- CUSTOM TIME PICKER (VERSI GAMBAR 2: LIST OPERASIONAL) ---
   void _showTimePickerList(bool isAmbil) {
-    // List jam operasional dummy
-    final List<String> times = [
-      "07:00", "08:00", "09:00", "10:00", "11:00", 
-      "12:00", "13:00", "14:00", "15:00", "16:00"
-    ];
+  final List<String> times = [
+    "07:00", "08:00", "09:00", "10:00", "11:00", 
+    "12:00", "13:00", "14:00"
+  ];
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          titlePadding: const EdgeInsets.all(0),
-          title: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
+  // Variabel lokal untuk menampung pilihan sementara sebelum klik "Pilih"
+  String? temporarySelectedTime = isAmbil ? _jamAmbil : _jamTenggat;
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      // Gunakan StatefulBuilder agar list di dalam dialog bisa update warna saat diklik
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            titlePadding: const EdgeInsets.all(0),
+            title: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
+              ),
+              child: const Text(
+                "Jam Operasional",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D4379)),
+              ),
             ),
-            child: const Text(
-              "Jam Operasional",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D4379)),
+            backgroundColor: Colors.white,
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.8,
+              height: 300,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: times.length,
+                itemBuilder: (context, index) {
+                  bool isSelected = temporarySelectedTime == times[index];
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFFD6EAF8) : Colors.transparent, // Highlight biru muda
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        times[index],
+                        style: TextStyle(
+                          color: isSelected ? const Color(0xFF5AB9D5) : Colors.grey[700],
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      onTap: () {
+                        setDialogState(() {
+                          temporarySelectedTime = times[index];
+                        });
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 300,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: times.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(times[index]),
-                  onTap: () {
-                    setState(() {
-                      if (isAmbil) {
-                        _jamAmbil = times[index];
-                      } else {
-                        _jamTenggat = times[index];
-                      }
-                    });
-                    Navigator.pop(context);
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal", style: TextStyle(color: Colors.grey)),
-            ),
-          ],
-        );
-      },
-    );
-  }
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.grey[100],
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          if (isAmbil) {
+                            _jamAmbil = temporarySelectedTime;
+                          } else {
+                            _jamTenggat = temporarySelectedTime;
+                          }
+                        });
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5AB9D5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: const Text("Pilih", style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
 
   // --- DATE PICKER ---
   Future<void> _pickDate(bool isAmbil) async {
@@ -121,7 +232,37 @@ class _PeminjamanFormScreenState extends State<PeminjamanFormScreen> {
     }
   }
 
-  @override
+
+    @override
+    void initState() {
+      super.initState();
+      _loadUserData(); // Panggil fungsi async terpisah
+    }
+
+    Future<void> _loadUserData() async {
+      try {
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user != null) {
+          // Ambil data nama dari tabel 'users' berdasarkan ID user yang login
+          final data = await Supabase.instance.client
+              .from('users') // Nama tabel user kamu
+              .select('nama_users') // Ganti dengan nama kolom di tabel kamu
+              .eq('id', user.id)
+              .single();
+
+          if (data != null && data['nama_users'] != null) {
+            setState(() {
+              _namaController.text = data['nama_users'];
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint("Error loading user name: $e");
+        // Fallback jika error, misalnya pakai email saja
+        _namaController.text = "Pengguna"; 
+      }
+    }
+
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FBFF),
@@ -171,7 +312,7 @@ class _PeminjamanFormScreenState extends State<PeminjamanFormScreen> {
           
           const Divider(height: 40, thickness: 1, color: Color(0xFFE0E0E0)),
             _buildLabel("Nama Peminjam"),
-            _buildTextField("Masukkan nama peminjam", _namaController),
+            _buildTextField("Masukkan nama peminjam", _namaController, isReadOnly: true),
             
             const SizedBox(height: 20),
             _buildLabel("Pengambilan"),
@@ -249,7 +390,7 @@ class _PeminjamanFormScreenState extends State<PeminjamanFormScreen> {
               const SizedBox(height: 2),
               // Kategori (Atau Nama Kategori jika Anda mempassingnya)
               Text(
-                "{item.namaKategori}", 
+                "${item.namaKategori}", 
                 style: const TextStyle(color: Colors.grey, fontSize: 12)
               ),
               const SizedBox(height: 4),
@@ -283,6 +424,31 @@ class _PeminjamanFormScreenState extends State<PeminjamanFormScreen> {
   );
 }
 
+  Widget _buildTextField(String hint, TextEditingController controller, {bool isReadOnly = false}) {
+  return TextFormField(
+    controller: controller,
+    readOnly: isReadOnly, // Jika true, user tidak bisa mengetik
+    //text
+    style: TextStyle(
+      color:  Colors.grey[500],
+      fontSize: 16
+      ),
+    decoration: InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.white, // Beri warna beda jika readOnly
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.white),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppColors.primaryBlue),
+      ),
+    ),
+  );
+}
+
   Widget _buildTambahButton() {
     return SizedBox(
       width: double.infinity,
@@ -301,22 +467,80 @@ class _PeminjamanFormScreenState extends State<PeminjamanFormScreen> {
   }
 
   Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton(
-        onPressed: () {
-          // Hanya Dummy Feedback
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tombol ditekan (Mode UI)")));
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF5AB9D5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: const Text("Ajukan Pinjam", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+    
+  return SizedBox(
+    width: double.infinity,
+    height: 55,
+    child: ElevatedButton(
+      onPressed: () async {
+        // 1. Validasi Input: Pastikan tanggal dan jam sudah dipilih
+        if (_tglAmbil == null || _jamAmbil == null || _tglTenggat == null || _jamTenggat == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Harap lengkapi tanggal dan jam pengambilan/tenggat")),
+          );
+          return;
+        }
+        try {
+          final user = Supabase.instance.client.auth.currentUser;
+          if (user == null) return;
+
+          // 2. Gabungkan Tanggal + Jam menjadi DateTime yang valid
+          // Jam di UI berformat "07:00", kita ambil jam dan menitnya
+          final jamAmbilParts = _jamAmbil!.split(':');
+          final dtAmbil = DateTime(
+            _tglAmbil!.year, _tglAmbil!.month, _tglAmbil!.day,
+            int.parse(jamAmbilParts[0]), int.parse(jamAmbilParts[1]),
+          );
+
+          final jamTenggatParts = _jamTenggat!.split(':');
+          final dtTenggat = DateTime(
+            _tglTenggat!.year, _tglTenggat!.month, _tglTenggat!.day,
+            int.parse(jamTenggatParts[0]), int.parse(jamTenggatParts[1]),
+          );
+
+          // 3. Simpan ke Tabel 'peminjaman'
+          final dataPeminjaman = await Supabase.instance.client
+              .from('peminjaman')
+              .insert({
+                'peminjam_id': user.id,
+                'tgl_pengambilan': dtAmbil.toIso8601String(),
+                'tenggat': dtTenggat.toIso8601String(),
+                'status_transaksi': 'menunggu persetujuan',
+              })
+              .select()
+              .single();
+
+          final int idPeminjamanBaru = dataPeminjaman['id_pinjam'];
+
+          // 4. Simpan ke Tabel 'detail_peminjaman'
+          // Menggunakan 'uniqueItems' dan 'groupedItems' yang sudah Anda buat di atas
+          final List<Map<String, dynamic>> batchDetails = uniqueItems.map((item) {
+            return {
+              'id_pinjam': idPeminjamanBaru,
+              'id_alat': item.idAlat,
+              'jumlah_pinjam': groupedItems[item.idAlat] ?? 1,
+            };
+          }).toList();
+
+          await Supabase.instance.client.from('detail_peminjaman').insert(batchDetails);
+
+        if (mounted) {
+          _showSuccessPopup(); // <--- Panggil fungsi pop-up di sini
+        }
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Gagal menyimpan: $e"), backgroundColor: Colors.red),
+          );
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF5AB9D5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-    );
-  }
+      child: const Text("Ajukan Pinjam", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+    ),
+  );
+}
 
   Widget _buildLabel(String text) {
     return Padding(
@@ -325,17 +549,6 @@ class _PeminjamanFormScreenState extends State<PeminjamanFormScreen> {
     );
   }
 
-  Widget _buildTextField(String hint, TextEditingController controller) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      ),
-    );
-  }
 
   Widget _buildDateTimePicker(String value, IconData icon, VoidCallback onTap) {
     return InkWell(

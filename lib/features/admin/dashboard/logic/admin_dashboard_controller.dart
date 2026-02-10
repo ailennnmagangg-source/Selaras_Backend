@@ -39,48 +39,49 @@ class AdminDashboardController {
 
     //PEMINJAMAN
    Future<List<Map<String, dynamic>>> getRecentTransactions({String filter = 'Semua'}) async {
-  try {
-    DateTime now = DateTime.now();
-    DateTime? startDate; // Ubah jadi nullable
+      try {
+        DateTime now = DateTime.now();
+        DateTime? startDate;
 
-    // Tentukan batas bawah tanggal
-    if (filter == 'Minggu ini') {
-      startDate = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7));
-    } else if (filter == 'Bulan ini') {
-      startDate = DateTime(now.year, now.month, 1);
-    } else if (filter == 'Hari ini') {
-      startDate = DateTime(now.year, now.month, now.day);
-    } else {
-      startDate = null; // Jika "Semua", tidak ada batas tanggal
+        if (filter == 'Minggu ini') {
+          startDate = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7));
+        } else if (filter == 'Bulan ini') {
+          startDate = DateTime(now.year, now.month, 1);
+        } else if (filter == 'Hari ini') {
+          startDate = DateTime(now.year, now.month, now.day);
+        } else {
+          startDate = null;
+        }
+
+        // Mulai Query
+        var query = _supabase
+            .from('peminjaman')
+            .select('''
+              id_pinjam,
+              tgl_pengambilan,
+              status_transaksi,
+              users:peminjam_id (nama_users),
+              detail_peminjaman (
+                jumlah_pinjam,
+                alat (nama_alat, foto_url)
+              )
+            ''')
+            // TAMBAHKAN FILTER INI:
+            .eq('status_transaksi', 'dipinjam'); 
+
+        // Filter tanggal tetap berlaku jika startDate tidak null
+        if (startDate != null) {
+          query = query.gte('tgl_pengambilan', startDate.toIso8601String());
+        }
+
+        final response = await query.order('tgl_pengambilan', ascending: false);
+
+        return List<Map<String, dynamic>>.from(response);
+      } catch (e) {
+        debugPrint("Error: $e");
+        return [];
+      }
     }
-
-    // Mulai Query
-    var query = _supabase
-        .from('peminjaman')
-        .select('''
-          id_pinjam,
-          tgl_pengambilan,
-          status_transaksi,
-          users:peminjam_id (nama_users),
-          detail_peminjaman (
-            jumlah_pinjam,
-            alat (nama_alat, foto_url)
-          )
-        ''');
-
-    // Hanya tambahkan filter tanggal jika startDate tidak null
-    if (startDate != null) {
-      query = query.gte('tgl_pengambilan', startDate.toIso8601String());
-    }
-
-    final response = await query.order('tgl_pengambilan', ascending: false);
-
-    return List<Map<String, dynamic>>.from(response);
-  } catch (e) {
-    debugPrint("Error: $e");
-    return [];
-  }
-}
  
     //DONAT /PIE CHART
     Future<List<Map<String, dynamic>>> getMostBorrowedAlat() async {
