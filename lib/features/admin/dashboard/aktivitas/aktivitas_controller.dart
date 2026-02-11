@@ -6,10 +6,10 @@ class AktivitasController {
 
   Future<List<PeminjamanModel>> getAktivitas(bool isPengembalian) async {
     try {
-      // 1. Tentukan filter (Pastikan ejaan 'dipinjam' sesuai dengan Enum baru di DB)
+      // 1. Tentukan filter sesuai permintaan halaman
       final List<String> statusFilter = isPengembalian 
-          ? ['selesai'] 
-          : ['menunggu persetujuan', 'dipinjam', 'terlambat']; 
+          ? ['selesai', 'denda'] // Halaman Pengembalian
+          : ['dipinjam', 'terlambat']; // Halaman Peminjaman
 
       // 2. Query ke Supabase
       final response = await supabase
@@ -18,13 +18,14 @@ class AktivitasController {
             *,
             peminjam:users!peminjam_id ( 
               nama_users, 
-              email
+              email,
+              tipe_user
             ),
             detail_peminjaman (
               jumlah_pinjam,
               alat (nama_alat)
             )
-          ''') // JANGAN ada titik koma di sini
+          ''') 
           .inFilter('status_transaksi', statusFilter)
           .order('id_pinjam', ascending: false);
 

@@ -19,7 +19,6 @@ class RiwayatPeminjamanTab extends StatelessWidget {
           .map((maps) => maps
               .where((item) =>
                   item['peminjam_id'] == userId &&
-                  // Mengambil status Selesai, Ditolak, dan Denda
                   ['selesai', 'ditolak', 'denda'].contains(item['status_transaksi']?.toString().toLowerCase()))
               .toList()),
       builder: (context, snapshot) {
@@ -31,12 +30,52 @@ class RiwayatPeminjamanTab extends StatelessWidget {
         final data = snapshot.data ?? [];
         if (data.isEmpty) return const Center(child: Text("Belum ada riwayat"));
 
+        // 1. Kelompokkan data berdasarkan tanggal
+        Map<String, List<Map<String, dynamic>>> groupedData = {};
+        for (var item in data) {
+          if (item['tgl_pengambilan'] != null) {
+            DateTime date = DateTime.parse(item['tgl_pengambilan']);
+            String dateKey = _getGroupHeader(date);
+            if (groupedData[dateKey] == null) groupedData[dateKey] = [];
+            groupedData[dateKey]!.add(item);
+          }
+        }
+
+        // 2. LOGIKA AGAR "HARI INI" DI ATAS
+        // Ambil semua kunci tanggal yang ada
+        List<String> sortedKeys = groupedData.keys.toList();
+        
+        // Periksa jika ada grup "Hari Ini", pindahkan secara manual ke index 0
+        if (sortedKeys.contains("Hari Ini")) {
+          sortedKeys.remove("Hari Ini");
+          sortedKeys.insert(0, "Hari Ini");
+        }
+
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          itemCount: data.length,
+          itemCount: sortedKeys.length,
           itemBuilder: (context, index) {
-            final item = data[index];
-            return _buildRiwayatCard(context, item);
+            String dateHeader = sortedKeys[index];
+            List<Map<String, dynamic>> items = groupedData[dateHeader]!;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 4),
+                  child: Text(
+                    dateHeader,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      // Warna berbeda untuk "Hari Ini" agar lebih menonjol
+                      color: dateHeader == "Hari Ini" ? const Color(0xFF5AB9D5) : const Color(0xFF234F68),
+                    ),
+                  ),
+                ),
+                ...items.map((item) => _buildRiwayatCard(context, item)).toList(),
+              ],
+            );
           },
         );
       },
@@ -46,7 +85,6 @@ class RiwayatPeminjamanTab extends StatelessWidget {
   Widget _buildRiwayatCard(BuildContext context, Map<String, dynamic> item) {
     final String status = item['status_transaksi']?.toString().toLowerCase() ?? '';
     
-    // Konfigurasi Warna & Ikon berdasarkan status sesuai gambar
     Color mainColor;
     Color bgColor;
     String statusText;
@@ -56,7 +94,7 @@ class RiwayatPeminjamanTab extends StatelessWidget {
 
     switch (status) {
       case 'ditolak':
-        mainColor = const Color(0xFFF77D8E); // Pink/Merah Ditolak
+        mainColor = const Color(0xFFF77D8E); 
         bgColor = const Color(0xFFF77D8E).withOpacity(0.1);
         statusText = "Ditolak";
         showButton = true;
@@ -64,18 +102,15 @@ class RiwayatPeminjamanTab extends StatelessWidget {
         onButtonTap = () => _showAlasanDitolakDialog(context, item['alasan_penolakan']);
         break;
       case 'denda':
-        mainColor = const Color(0xFFFFB74D); // Oranye Denda
+        mainColor = const Color(0xFFFFB74D); 
         bgColor = const Color(0xFFFFB74D).withOpacity(0.1);
         statusText = "Denda!";
         showButton = true;
         buttonLabel = "Detail Denda";
-        onButtonTap = () {
-            // Navigasi ke detail alat yang juga menampilkan rincian denda
-            Navigator.push(context, MaterialPageRoute(builder: (context) => PeminjamDetailAlatScreen(idPinjam: item['id_pinjam'])));
-        };
+        onButtonTap = () => Navigator.push(context, MaterialPageRoute(builder: (context) => PeminjamDetailAlatScreen(idPinjam: item['id_pinjam'])));
         break;
-      default: // Selesai
-        mainColor = const Color(0xFF5AB9D5); // Biru Selesai
+      default: 
+        mainColor = const Color(0xFF5AB9D5); 
         bgColor = const Color(0xFFE3F2FD);
         statusText = "Selesai";
     }
@@ -92,20 +127,17 @@ class RiwayatPeminjamanTab extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  // Icon Lingkaran Tanda Seru sesuai Gambar
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(color: mainColor, shape: BoxShape.circle),
                     child: const Icon(Icons.priority_high, color: Colors.white, size: 12),
                   ),
                   const SizedBox(width: 12),
-                  // Badge Status
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
@@ -117,10 +149,7 @@ class RiwayatPeminjamanTab extends StatelessWidget {
                 ],
               ),
               GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => PeminjamDetailAlatScreen(idPinjam: item['id_pinjam'])),
-                ),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PeminjamDetailAlatScreen(idPinjam: item['id_pinjam']))),
                 child: const Row(
                   children: [
                     Text("Detail Alat ", style: TextStyle(color: Colors.grey, fontSize: 11)),
@@ -134,7 +163,6 @@ class RiwayatPeminjamanTab extends StatelessWidget {
           const Divider(height: 1, color: Color(0xFFF1F1F1)),
           const SizedBox(height: 16),
           
-          // Tanggal Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -144,20 +172,22 @@ class RiwayatPeminjamanTab extends StatelessWidget {
             ],
           ),
 
-          // Tombol Aksi (Hanya muncul jika Ditolak atau Denda)
           if (showButton) ...[
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: ElevatedButton(
-                onPressed: onButtonTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5AB9D5), // Warna Tombol sesuai mockup
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  elevation: 0,
+            Align(
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 140, // Ukuran tombol lebih kecil/proporsional
+                height: 38,
+                child: ElevatedButton(
+                  onPressed: onButtonTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: mainColor, 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    elevation: 0,
+                  ),
+                  child: Text(buttonLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                 ),
-                child: Text(buttonLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ]
@@ -169,10 +199,14 @@ class RiwayatPeminjamanTab extends StatelessWidget {
   Widget _buildDateInfo(String label, String? dateStr, {Color? color}) {
     String formattedDate = "-";
     String formattedTime = "00.00";
-    if (dateStr != null) {
-      DateTime dt = DateTime.parse(dateStr).toLocal();
-      formattedDate = DateFormat('dd MMM yyyy').format(dt);
-      formattedTime = DateFormat('HH.mm').format(dt);
+    if (dateStr != null && dateStr.isNotEmpty) {
+      try {
+        DateTime dt = DateTime.parse(dateStr);
+        formattedDate = DateFormat('dd MMM yyyy').format(dt);
+        formattedTime = DateFormat('HH.mm').format(dt);
+      } catch (e) {
+        debugPrint("Error parsing: $e");
+      }
     }
 
     return Column(
@@ -180,16 +214,21 @@ class RiwayatPeminjamanTab extends StatelessWidget {
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
         const SizedBox(height: 6),
-        Text(
-          "$formattedDate | $formattedTime",
-          style: TextStyle(
-            fontSize: 11, 
-            fontWeight: FontWeight.bold, 
-            color: color ?? const Color(0xFF2D4379)
-          ),
-        ),
+        Text(formattedDate, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2D4379))),
+        Text(formattedTime, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color ?? const Color(0xFF2D4379))),
       ],
     );
+  }
+
+  String _getGroupHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final checkDate = DateTime(date.year, date.month, date.day);
+
+    if (checkDate == today) return "Hari Ini";
+    if (checkDate == yesterday) return "Kemarin";
+    return DateFormat('dd MMM yyyy').format(date);
   }
 
   void _showAlasanDitolakDialog(BuildContext context, String? alasan) {

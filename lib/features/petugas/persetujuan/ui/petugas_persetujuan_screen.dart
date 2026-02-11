@@ -14,7 +14,6 @@ class PetugasPersetujuanScreen extends StatefulWidget {
 class _PetugasPersetujuanScreenState extends State<PetugasPersetujuanScreen> {
   final supabase = Supabase.instance.client;
 
-  // 1. Fungsi Fetch Data dengan Join ke Tabel Users
   Future<List<Map<String, dynamic>>> _fetchData(bool isPending) async {
     var query = supabase.from('peminjaman').select('''
         *,
@@ -34,89 +33,105 @@ class _PetugasPersetujuanScreenState extends State<PetugasPersetujuanScreen> {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  // 2. Fungsi Update Status (Trigger DB akan otomatis jalan)
-  Future<void> _prosesPersetujuan(int idPinjam, String statusBaru, {String? alasan}) async {
-  try {
-    final petugasId = supabase.auth.currentUser?.id;
+  // Fungsi Helper Header Tanggal
+  String _getGroupHeader(String? dateStr) {
+    if (dateStr == null) return "Lainnya";
+    final DateTime date = DateTime.parse(dateStr).toLocal();
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime yesterday = today.subtract(const Duration(days: 1));
+    final DateTime checkDate = DateTime(date.year, date.month, date.day);
 
-    // Data yang akan di-update
-    Map<String, dynamic> updateData = {
-      'status_transaksi': statusBaru,
-      'petugas_id': petugasId,
-    };
-
-    // Jika ada alasan penolakan, masukkan ke dalam payload update
-    if (alasan != null) {
-      updateData['alasan_penolakan'] = alasan;
-    }
-
-    await supabase.from('peminjaman').update(updateData).eq('id_pinjam', idPinjam);
-
-    setState(() {}); // Refresh UI
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Berhasil: Pengajuan telah $statusBaru")),
-      );
-    }
-  } catch (e) {
-    debugPrint("Gagal update: $e");
+    if (checkDate == today) return "Hari Ini";
+    if (checkDate == yesterday) return "Kemarin";
+    return DateFormat('dd MMMM yyyy').format(date);
   }
-}
 
-void _showRejectDialog(int idPinjam) {
-  final TextEditingController _alasanController = TextEditingController();
+  Future<void> _prosesPersetujuan(int idPinjam, String statusBaru, {String? alasan}) async {
+    try {
+      final petugasId = supabase.auth.currentUser?.id;
+      Map<String, dynamic> updateData = {
+        'status_transaksi': statusBaru,
+        'petugas_id': petugasId,
+      };
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text("Alasan Ditolak!", 
-          textAlign: TextAlign.center, 
-          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Catatan:"),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _alasanController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: "Ketik alasan ditolak...",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                if (_alasanController.text.isNotEmpty) {
-                  Navigator.pop(context); // Tutup dialog
-                  _prosesPersetujuan(idPinjam, 'ditolak', alasan: _alasanController.text);
-                } else {
-                  // Validasi jika alasan kosong
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Alasan tidak boleh kosong!")),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5AB9D5),
-                minimumSize: const Size(150, 40)
-              ),
-              child: const Text("Oke", style: TextStyle(color: Colors.white)),
-            ),
+      if (alasan != null) {
+        updateData['alasan_penolakan'] = alasan;
+      }
+
+      await supabase.from('peminjaman').update(updateData).eq('id_pinjam', idPinjam);
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Berhasil: Pengajuan telah $statusBaru")),
+        );
+      }
+    } catch (e) {
+      debugPrint("Gagal update: $e");
+    }
+  }
+
+  void _showRejectDialog(int idPinjam) {
+    final TextEditingController _alasanController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Alasan Ditolak!", 
+            textAlign: TextAlign.center, 
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
           ),
-        ],
-      );
-    },
-  );
-}
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Catatan:", style: TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _alasanController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: "Ketik alasan ditolak...",
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  if (_alasanController.text.isNotEmpty) {
+                    Navigator.pop(context);
+                    _prosesPersetujuan(idPinjam, 'ditolak', alasan: _alasanController.text);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Alasan tidak boleh kosong!")),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF5AB9D5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  minimumSize: const Size(180, 45)
+                ),
+                child: const Text("Kirim Perolakan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -124,7 +139,7 @@ void _showRejectDialog(int idPinjam) {
       child: Scaffold(
         backgroundColor: const Color(0xFFF8FBFF),
         appBar: AppBar(
-          title: const Text("Persetujuan", style: TextStyle(color: Color(0xFF2D4379), fontWeight: FontWeight.bold)),
+          title: const Text("Persetujuan", style: TextStyle(color: Color(0xFF234F68), fontWeight: FontWeight.bold)),
           centerTitle: true,
           backgroundColor: Colors.white,
           elevation: 0,
@@ -132,17 +147,17 @@ void _showRejectDialog(int idPinjam) {
             labelColor: Color(0xFF5AB9D5),
             unselectedLabelColor: Colors.grey,
             indicatorColor: Color(0xFF5AB9D5),
+            indicatorWeight: 3,
             tabs: [
               Tab(text: "Belum Diproses"),
               Tab(text: "Riwayat Persetujuan"),
             ],
           ),
         ),
-        // 3. Gunakan _buildListPersetujuan agar data terbagi sesuai Tab
         body: TabBarView(
           children: [
-            _buildListPersetujuan(true),           // Tab Belum Diproses (dari file lama)
-            const PetugasRiwayatPersetujuanScreen(), // Tab Riwayat (panggil file baru)
+            _buildListPersetujuan(true),
+            const PetugasRiwayatPersetujuanScreen(),
           ],
         ),
       ),
@@ -156,22 +171,48 @@ void _showRejectDialog(int idPinjam) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (snapshot.hasError) {
-          return Center(child: Text("Error: ${snapshot.error}"));
-        }
+        if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
+        
         final list = snapshot.data ?? [];
+        if (list.isEmpty) return const Center(child: Text("Tidak ada data pengajuan"));
 
-        if (list.isEmpty) {
-          return const Center(child: Text("Tidak ada data pengajuan"));
+        // --- LOGIKA GROUPING ---
+        Map<String, List<Map<String, dynamic>>> groupedData = {};
+        for (var item in list) {
+          String header = _getGroupHeader(item['tgl_pengambilan']);
+          if (groupedData[header] == null) groupedData[header] = [];
+          groupedData[header]!.add(item);
+        }
+
+        List<String> sortedHeaders = groupedData.keys.toList();
+        // Sorting "Hari Ini" ke paling atas
+        if (sortedHeaders.contains("Hari Ini")) {
+          sortedHeaders.remove("Hari Ini");
+          sortedHeaders.insert(0, "Hari Ini");
         }
 
         return RefreshIndicator(
           onRefresh: () async => setState(() {}),
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: list.length,
+            padding: const EdgeInsets.all(20),
+            itemCount: sortedHeaders.length,
             itemBuilder: (context, index) {
-              return _buildCardPersetujuan(list[index], isPending);
+              final header = sortedHeaders[index];
+              final items = groupedData[header]!;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 15, left: 4),
+                    child: Text(
+                      header,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF234F68)),
+                    ),
+                  ),
+                  ...items.map((data) => _buildCardPersetujuan(data, isPending)).toList(),
+                ],
+              );
             },
           ),
         );
@@ -185,72 +226,84 @@ void _showRejectDialog(int idPinjam) {
     final String tipeUser = userData?['tipe_user'] ?? '-';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         children: [
           Row(
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xFFE8F1FF),
-                child: Text(namaPeminjam[0].toUpperCase(), style: const TextStyle(color: Color(0xFF5AB9D5))),
+                backgroundColor: const Color(0xFFF1F4F8),
+                child: Text(namaPeminjam[0].toUpperCase(), style: const TextStyle(color: Color(0xFF5AB9D5), fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(namaPeminjam, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2D4379))),
-                  Text(tipeUser, style: const TextStyle(fontSize: 12, color: Color(0xFF5AB9D5))),
+                  Text(namaPeminjam, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF234F68))),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(color: const Color(0xFF5AB9D5).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                    child: Text(tipeUser.toUpperCase(), style: const TextStyle(fontSize: 9, color: Color(0xFF5AB9D5), fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
               const Spacer(),
               if (!isPending) _buildBadgeStatus(data['status_transaksi'])
             ],
           ),
-          const Divider(height: 30),
+          const SizedBox(height: 20),
+          const Divider(height: 1, color: Color(0xFFF1F4F8)),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildDateInfo("Pengambilan", data['tgl_pengambilan']),
               _buildDateInfo("Tenggat", data['tenggat']),
-              TextButton(
-                onPressed: () {
+              GestureDetector(
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => PeminjamDetailAlatScreen(idPinjam: data['id_pinjam'])),
                   );
                 },
-                child: const Text("Detail Alat", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                child: const Text("Detail Alat", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12, decoration: TextDecoration.underline)),
               ),
             ],
           ),
           if (isPending) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
             Row(
               children: [
-                // Di dalam Row tombol kartu persetujuan
                 Expanded(
                   child: OutlinedButton(
-                    // Panggil fungsi dialog, bukan langsung proses update
                     onPressed: () => _showRejectDialog(data['id_pinjam']), 
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red, 
-                      side: const BorderSide(color: Colors.red)
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12)
                     ),
-                    child: const Text("Tolak"),
+                    child: const Text("Tolak", style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => _prosesPersetujuan(data['id_pinjam'], 'dipinjam'),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5AB9D5)),
-                    child: const Text("Disetujui", style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5AB9D5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0
+                    ),
+                    child: const Text("Setujui", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -261,14 +314,14 @@ void _showRejectDialog(int idPinjam) {
     );
   }
 
-  // --- Widget Kecil Pembantu ---
   Widget _buildDateInfo(String label, String dateStr) {
-    final date = DateTime.parse(dateStr);
+    final date = DateTime.parse(dateStr).toLocal();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        Text(DateFormat('dd MMM | HH:mm').format(date), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        Text(DateFormat('dd MMM | HH:mm').format(date), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF234F68))),
       ],
     );
   }
@@ -276,9 +329,9 @@ void _showRejectDialog(int idPinjam) {
   Widget _buildBadgeStatus(String status) {
     Color color = status == 'dipinjam' ? Colors.green : Colors.red;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-      child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+      child: Text(status.toUpperCase(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: color)),
     );
   }
 }

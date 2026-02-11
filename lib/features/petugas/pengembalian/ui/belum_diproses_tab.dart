@@ -3,6 +3,8 @@ import 'package:selaras_backend/features/petugas/pengembalian/ui/petugas_proses_
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
+import '../../../shared/widgets/peminjam_detail_alat_screen.dart';
+
 class BelumDiprosesTab extends StatefulWidget {
   const BelumDiprosesTab({super.key});
 
@@ -13,49 +15,49 @@ class BelumDiprosesTab extends StatefulWidget {
 class _BelumDiprosesTabState extends State<BelumDiprosesTab> {
   final supabase = Supabase.instance.client;
 
-  // Menggunakan Stream biasa dari query select untuk mendapatkan relasi
-  // Kita akan menggabungkan stream tabel 'peminjaman' dengan data dari 'users'
   Stream<List<Map<String, dynamic>>> _getPengembalianStream() {
     return supabase
         .from('peminjaman')
-        // Query select ini mengambil semua kolom peminjaman (*) 
-        // DAN data dari tabel users yang berelasi melalui peminjam_id
         .stream(primaryKey: ['id_pinjam'])
         .order('tgl_pengambilan', ascending: false)
         .map((list) => list
             .where((item) => item['status_transaksi']?.toString().toLowerCase() == 'menunggu pengecekan')
             .toList())
         .asyncMap((list) async {
-          // Karena .stream() standar tidak melakukan JOIN, 
-          // kita lakukan fetch data user manual untuk setiap item dalam list
           final newList = <Map<String, dynamic>>[];
           for (var item in list) {
-            final userData = await supabase
-                .from('users')
-                .select('nama_users, tipe_user')
-                .eq('id', item['peminjam_id'])
-                .single();
-            
-            // Gabungkan data peminjaman dengan data user
-            newList.add({
-              ...item,
-              'nama_users': userData['nama_users'],
-              'tipe_user': userData['tipe_user'],
-            });
+            try {
+              final userData = await supabase
+                  .from('users')
+                  .select('nama_users, tipe_user')
+                  .eq('id', item['peminjam_id'])
+                  .single();
+              
+              newList.add({
+                ...item,
+                'nama_users': userData['nama_users'],
+                'tipe_user': userData['tipe_user'],
+              });
+            } catch (e) {
+              newList.add(item);
+            }
           }
           return newList;
         });
   }
 
-  Future<void> _konfirmasiSelesai(int idPinjam) async {
-    try {
-      await supabase
-          .from('peminjaman')
-          .update({'status_transaksi': 'selesai'})
-          .eq('id_pinjam', idPinjam);
-    } catch (e) {
-      debugPrint("Error: $e");
-    }
+  // Fungsi Helper Header Tanggal
+  String _getGroupHeader(String? dateStr) {
+    if (dateStr == null) return "Lainnya";
+    final DateTime date = DateTime.parse(dateStr).toLocal();
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime yesterday = today.subtract(const Duration(days: 1));
+    final DateTime checkDate = DateTime(date.year, date.month, date.day);
+
+    if (checkDate == today) return "Hari Ini";
+    if (checkDate == yesterday) return "Kemarin";
+    return DateFormat('dd MMMM yyyy').format(date);
   }
 
   @override
@@ -71,10 +73,48 @@ class _BelumDiprosesTabState extends State<BelumDiprosesTab> {
         final data = snapshot.data ?? [];
         if (data.isEmpty) return const Center(child: Text("Tidak ada pengembalian baru"));
 
+        // --- LOGIKA GROUPING ---
+        Map<String, List<Map<String, dynamic>>> groupedData = {};
+        for (var item in data) {
+          String header = _getGroupHeader(item['tgl_pengambilan']);
+          if (groupedData[header] == null) groupedData[header] = [];
+          groupedData[header]!.add(item);
+        }
+
+        // Pastikan "Hari Ini" muncul paling atas jika ada
+        List<String> sortedHeaders = groupedData.keys.toList();
+        if (sortedHeaders.contains("Hari Ini")) {
+          sortedHeaders.remove("Hari Ini");
+          sortedHeaders.insert(0, "Hari Ini");
+        }
+
         return ListView.builder(
           padding: const EdgeInsets.all(20),
-          itemCount: data.length,
-          itemBuilder: (context, index) => _buildPetugasCard(data[index]),
+          itemCount: sortedHeaders.length,
+          itemBuilder: (context, index) {
+            final header = sortedHeaders[index];
+            final items = groupedData[header]!;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Tanggal Modern
+                Padding(
+                  padding: const EdgeInsets.only(top: 10, bottom: 15, left: 4),
+                  child: Text(
+                    header,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF234F68),
+                    ),
+                  ),
+                ),
+                // Item Card
+                ...items.map((item) => _buildPetugasCard(item)).toList(),
+              ],
+            );
+          },
         );
       },
     );
@@ -87,7 +127,13 @@ class _BelumDiprosesTabState extends State<BelumDiprosesTab> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04), 
+            blurRadius: 15, 
+            offset: const Offset(0, 8)
+          )
+        ],
       ),
       child: Column(
         children: [
@@ -95,27 +141,26 @@ class _BelumDiprosesTabState extends State<BelumDiprosesTab> {
             children: [
               const CircleAvatar(
                 backgroundColor: Color(0xFFF1F4F8), 
-                child: Icon(Icons.person, color: Colors.blueGrey)
+                child: Icon(Icons.person, color: Color(0xFF5AB9D5))
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // NAMA USERS DARI TABEL USERS
                   Text(
                     item['nama_users'] ?? "Peminjam",
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF234F68)),
                   ),
-                  // TIPE USER DARI TABEL USERS
+                  const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: const Color(0xFF5AB9D5).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(5)
+                      borderRadius: BorderRadius.circular(6)
                     ),
                     child: Text(
-                      item['tipe_user'] ?? "-",
-                      style: const TextStyle(fontSize: 10, color: Color(0xFF5AB9D5), fontWeight: FontWeight.bold),
+                      item['tipe_user']?.toUpperCase() ?? "-",
+                      style: const TextStyle(fontSize: 9, color: Color(0xFF5AB9D5), fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -124,22 +169,43 @@ class _BelumDiprosesTabState extends State<BelumDiprosesTab> {
               _buildBadge("Menunggu"),
             ],
           ),
-          const Divider(height: 32),
-          // Info Tanggal
+          const SizedBox(height: 20),
+          const Divider(height: 1, color: Color(0xFFF1F4F8)),
+          const SizedBox(height: 20),
+          
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildDateInfo("Pinjam", item['tgl_pengambilan']),
               _buildDateInfo("Tenggat", item['tenggat']),
-              const Text("Detail Alat", style: TextStyle(color: Colors.orange, decoration: TextDecoration.underline, fontSize: 12)),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PeminjamDetailAlatScreen(
+                        idPinjam: item['id_pinjam'] ?? 0, 
+                      ),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "Detail Alat",
+                  style: TextStyle(
+                    color: Colors.orange,
+                    decoration: TextDecoration.underline,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            height: 45,
-            child: // Di dalam Widget _buildPetugasCard
-            ElevatedButton(
+            height: 48,
+            child: ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -148,7 +214,15 @@ class _BelumDiprosesTabState extends State<BelumDiprosesTab> {
                   ),
                 );
               },
-              child: const Text("Pengembalian"), // Ubah teks sesuai gambar
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5AB9D5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                elevation: 0,
+              ),
+              child: const Text(
+                "Proses Pengembalian", 
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+              ),
             )
           )
         ],
@@ -156,23 +230,29 @@ class _BelumDiprosesTabState extends State<BelumDiprosesTab> {
     );
   }
 
-  // Widget pendukung Badge & DateInfo tetap sama seperti sebelumnya...
   Widget _buildBadge(String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-      child: Text(label.toUpperCase(), style: const TextStyle(color: Colors.orange, fontSize: 9, fontWeight: FontWeight.bold)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1), 
+        borderRadius: BorderRadius.circular(10)
+      ),
+      child: Text(
+        label.toUpperCase(), 
+        style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w800)
+      ),
     );
   }
 
   Widget _buildDateInfo(String label, String? dateStr) {
     DateTime? date = dateStr != null ? DateTime.tryParse(dateStr) : null;
-    String formatted = date != null ? DateFormat('dd MMM yyyy').format(date) : '-';
+    String formatted = date != null ? DateFormat('dd MMM yyyy').format(date.toLocal()) : '-';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-        Text(formatted, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2D4379))),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        Text(formatted, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF234F68))),
       ],
     );
   }

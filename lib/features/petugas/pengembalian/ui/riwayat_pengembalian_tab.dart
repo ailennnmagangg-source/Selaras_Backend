@@ -26,7 +26,7 @@ class RiwayatPengembalianTab extends StatelessWidget {
 
         final allData = snapshot.data ?? [];
 
-        // Filter status Selesai dan Denda saja
+        // 1. Filter status Selesai dan Denda saja
         final filteredData = allData.where((item) {
           final status = item['status_transaksi']?.toString().toLowerCase() ?? '';
           return status == 'selesai' || status == 'denda';
@@ -36,23 +36,71 @@ class RiwayatPengembalianTab extends StatelessWidget {
           return const Center(child: Text("Belum ada riwayat pengembalian"));
         }
 
+        // 2. LOGIKA GROUPING
+        Map<String, List<Map<String, dynamic>>> groupedData = {};
+        for (var item in filteredData) {
+          String header = _getGroupHeader(item['tgl_pengambilan']);
+          if (groupedData[header] == null) groupedData[header] = [];
+          groupedData[header]!.add(item);
+        }
+
+        // 3. Pastikan "Hari Ini" selalu di paling atas
+        List<String> sortedHeaders = groupedData.keys.toList();
+        if (sortedHeaders.contains("Hari Ini")) {
+          sortedHeaders.remove("Hari Ini");
+          sortedHeaders.insert(0, "Hari Ini");
+        }
+
         return ListView.builder(
           padding: const EdgeInsets.all(20),
-          itemCount: filteredData.length,
+          itemCount: sortedHeaders.length,
           itemBuilder: (context, index) {
-            final item = filteredData[index];
-            return _buildRiwayatCard(context, item, supabase);
+            final header = sortedHeaders[index];
+            final items = groupedData[header]!;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Tanggal (Hari Ini / Kemarin / Tanggal)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10, bottom: 15, left: 4),
+                  child: Text(
+                    header,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF234F68),
+                    ),
+                  ),
+                ),
+                // Render list card di bawah header tersebut
+                ...items.map((item) => _buildRiwayatCard(context, item, supabase)).toList(),
+              ],
+            );
           },
         );
       },
     );
   }
 
+  // Fungsi Helper Header Tanggal
+  String _getGroupHeader(String? dateStr) {
+    if (dateStr == null) return "Lainnya";
+    final DateTime date = DateTime.parse(dateStr).toLocal();
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime yesterday = today.subtract(const Duration(days: 1));
+    final DateTime checkDate = DateTime(date.year, date.month, date.day);
+
+    if (checkDate == today) return "Hari Ini";
+    if (checkDate == yesterday) return "Kemarin";
+    return DateFormat('dd MMMM yyyy').format(date);
+  }
+
   Widget _buildRiwayatCard(BuildContext context, Map<String, dynamic> item, SupabaseClient supabase) {
     final String status = item['status_transaksi']?.toString().toLowerCase() ?? '';
     final bool isDenda = status == 'denda';
     
-    // Warna sesuai mockup
     final Color mainColor = isDenda ? const Color(0xFFFFB74D) : const Color(0xFF5AB9D5);
     final Color bgColor = isDenda ? const Color(0xFFFFB74D).withOpacity(0.1) : const Color(0xFFE3F2FD);
     final String statusLabel = isDenda ? "Denda!" : "Selesai";
@@ -70,7 +118,6 @@ class RiwayatPengembalianTab extends StatelessWidget {
       child: IntrinsicHeight(
         child: Row(
           children: [
-            // Garis vertikal di sisi kiri sesuai gambar
             Container(
               width: 5,
               decoration: BoxDecoration(
@@ -84,7 +131,6 @@ class RiwayatPengembalianTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header: Profil & Detail Alat Link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -95,7 +141,7 @@ class RiwayatPengembalianTab extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => PeminjamDetailAlatScreen(
-                                  idPinjam: item['id_pinjam'], // Pastikan id_pinjam dikirim ke screen tujuan
+                                  idPinjam: item['id_pinjam'],
                                 ),
                               ),
                             );
@@ -110,7 +156,7 @@ class RiwayatPengembalianTab extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              SizedBox(width: 4), // Jarak kecil antara teks dan ikon
+                              SizedBox(width: 4),
                               Icon(
                                 Icons.arrow_forward_ios, 
                                 size: 10, 
@@ -125,7 +171,6 @@ class RiwayatPengembalianTab extends StatelessWidget {
                     const Divider(height: 1),
                     const SizedBox(height: 12),
                     
-                    // Info Tanggal Row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -138,7 +183,6 @@ class RiwayatPengembalianTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Status Badge dengan Icon Tanda Seru
                     Row(
                       children: [
                         Container(
@@ -170,12 +214,19 @@ class RiwayatPengembalianTab extends StatelessWidget {
   Widget _buildUserProfile(SupabaseClient supabase, String? userId) {
     return FutureBuilder(
       future: userId != null 
-          ? supabase.from('profiles').select('username, role').eq('id', userId).maybeSingle()
+          ? supabase.from('users').select('nama_users, tipe_user').eq('id', userId).maybeSingle()
           : Future.value(null),
       builder: (context, snapshot) {
-        final profile = snapshot.data as Map<String, dynamic>?;
-        final String name = profile?['username'] ?? "User";
-        final String role = profile?['role'] ?? "Siswa";
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2));
+        }
+
+        final userData = snapshot.data as Map<String, dynamic>?;
+        final String namaPeminjam = userData?['nama_users'] ?? "Tidak Diketahui";        
+        final String tipeUser = userData?['tipe_user'] ?? "Umum";
+
+        Color labelColor = tipeUser.toLowerCase() == 'guru' ? Colors.orange.shade100 : const Color(0xFFE3F2FD);
+        Color textColor = tipeUser.toLowerCase() == 'guru' ? Colors.orange.shade800 : const Color(0xFF4EB7D9);
 
         return Row(
           children: [
@@ -188,11 +239,17 @@ class RiwayatPengembalianTab extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF234F68))),
+                Text(
+                  namaPeminjam, 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF234F68))
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(8)),
-                  child: Text(role.toUpperCase(), style: const TextStyle(fontSize: 9, color: Color(0xFF4EB7D9), fontWeight: FontWeight.bold)),
+                  decoration: BoxDecoration(color: labelColor, borderRadius: BorderRadius.circular(8)),
+                  child: Text(
+                    tipeUser.toUpperCase(), 
+                    style: TextStyle(fontSize: 9, color: textColor, fontWeight: FontWeight.bold)
+                  ),
                 ),
               ],
             ),

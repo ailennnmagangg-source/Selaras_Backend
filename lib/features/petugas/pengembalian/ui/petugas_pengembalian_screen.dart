@@ -25,7 +25,7 @@ class PetugasPengembalianScreen extends StatelessWidget {
             indicatorColor: Color(0xFF5AB9D5),
             tabs: [
               Tab(child: Text("Belum Diproses")),
-              Tab(child: Text("Riwayat")),
+              Tab(child: Text("Riwayat Pengembalian")),
             ],
           ),
         ),

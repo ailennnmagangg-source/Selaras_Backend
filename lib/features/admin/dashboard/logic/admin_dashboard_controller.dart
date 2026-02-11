@@ -135,4 +135,8 @@ class AdminDashboardController {
     return [];
   }
 }
+
+  getTotalDendaMingguIni() {}
+
+  getDetailDendaMingguan() {}
 }

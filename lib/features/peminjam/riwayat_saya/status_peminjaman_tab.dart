@@ -32,20 +32,32 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
             .toList());
   }
 
+  // Fungsi helper untuk menentukan label Header Tanggal
+  String _getGroupHeader(String? dateStr) {
+    if (dateStr == null) return "Lainnya";
+    final DateTime date = DateTime.parse(dateStr).toLocal();
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime yesterday = today.subtract(const Duration(days: 1));
+    final DateTime checkDate = DateTime(date.year, date.month, date.day);
+
+    if (checkDate == today) return "Hari Ini";
+    if (checkDate == yesterday) return "Kemarin";
+    return DateFormat('dd MMMM yyyy').format(date);
+  }
+
   Future<void> _updateStatus(int idPinjam) async {
-    setState(() => _isUpdating = true); // Mulai loading
+    setState(() => _isUpdating = true);
     try {
       await supabase
           .from('peminjaman')
           .update({'status_transaksi': 'menunggu pengecekan'})
           .eq('id_pinjam', idPinjam);
-          
-      // Beri sedikit delay agar database punya waktu untuk broadcast stream
-      await Future.delayed(const Duration(milliseconds: 500)); 
+      await Future.delayed(const Duration(milliseconds: 500));
     } catch (e) {
       debugPrint("Error: $e");
     } finally {
-      if (mounted) setState(() => _isUpdating = false); // Berhenti loading
+      if (mounted) setState(() => _isUpdating = false);
     }
   }
 
@@ -60,10 +72,44 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
         final data = snapshot.data!;
         if (data.isEmpty) return const Center(child: Text("Tidak ada peminjaman aktif", style: TextStyle(color: Colors.grey)));
 
+        // --- LOGIKA GROUPING ---
+        Map<String, List<Map<String, dynamic>>> groupedData = {};
+        for (var item in data) {
+          String header = _getGroupHeader(item['tgl_pengambilan']);
+          if (groupedData[header] == null) groupedData[header] = [];
+          groupedData[header]!.add(item);
+        }
+
+        // Urutan header agar "Hari Ini" tetap konsisten di atas jika datanya terbaru
+        final sortedHeaders = groupedData.keys.toList();
+
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          itemCount: data.length,
-          itemBuilder: (context, index) => _buildModernCard(data[index]),
+          itemCount: sortedHeaders.length,
+          itemBuilder: (context, index) {
+            final header = sortedHeaders[index];
+            final items = groupedData[header]!;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Tanggal (Hari Ini / Kemarin / Tanggal)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10, bottom: 15, left: 4),
+                  child: Text(
+                    header,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF234F68),
+                    ),
+                  ),
+                ),
+                // List item di bawah header tersebut
+                ...items.map((item) => _buildModernCard(item)).toList(),
+              ],
+            );
+          },
         );
       },
     );
@@ -91,7 +137,6 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
       child: IntrinsicHeight(
         child: Row(
           children: [
-            // Garis vertikal indikator warna di sisi kiri (Aksen Modern)
             Container(
               width: 5,
               decoration: BoxDecoration(
@@ -108,7 +153,6 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header: Icon + Status Badge
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -125,7 +169,6 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
                     const Divider(height: 1, color: Color(0xFFF1F4F8)),
                     const SizedBox(height: 16),
                     
-                    // Info Row: Pengambilan, Tenggat, Detail Alat
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -142,7 +185,7 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
                               child: const Text(
                                 "Detail Alat",
                                 style: TextStyle(
-                                  color: Colors.orange,
+                                  color: Color(0xFF5AB9D5),
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   decoration: TextDecoration.underline,
@@ -155,13 +198,11 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
                     ),
                     const SizedBox(height: 20),
                     
-                    // Button Action
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        // Tombol hanya "disabled" jika sedang menunggu pengecekan atau persetujuan
-                        onPressed: (isWaitingCheck || isPendingApproval) 
+                        onPressed: (isWaitingCheck || isPendingApproval || _isUpdating) 
                             ? null 
                             : () => _updateStatus(idPinjam),
                         style: ElevatedButton.styleFrom(
@@ -170,17 +211,19 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           elevation: 0,
                         ),
-                        child: Text(
-                          isWaitingCheck 
-                              ? "Menunggu Pengecekan" 
-                              : isPendingApproval 
-                                  ? "Menunggu Persetujuan" 
-                                  : "Ajukan Pengembalian",
-                          style: TextStyle(
-                            color: (isWaitingCheck || isPendingApproval) ? Colors.grey[600] : Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isUpdating 
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Text(
+                              isWaitingCheck 
+                                  ? "Menunggu Pengecekan" 
+                                  : isPendingApproval 
+                                      ? "Menunggu Persetujuan" 
+                                      : "Ajukan Pengembalian",
+                              style: TextStyle(
+                                color: (isWaitingCheck || isPendingApproval) ? Colors.grey[600] : Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                       ),
                     ),
                   ],
@@ -220,7 +263,7 @@ class _StatusPeminjamanTabState extends State<StatusPeminjamanTab> {
 
   Widget _buildDateInfo(String label, String? dateStr) {
     DateTime? date = dateStr != null ? DateTime.tryParse(dateStr) : null;
-    String formatted = date != null ? DateFormat('dd MMM yyyy | HH.mm').format(date) : '-';
+    String formatted = date != null ? DateFormat('dd MMM yyyy | HH.mm').format(date.toLocal()) : '-';
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
